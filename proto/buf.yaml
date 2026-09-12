@@ -1,0 +1,17 @@
+version: v1
+deps:
+  - buf.build/bufbuild/protovalidate
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - BASIC
+  except:
+    # api/types/common.proto is a source-only copy kept here purely for
+    # cross-package import resolution (citius-core generates only store/) —
+    # its own package/go_package intentionally point at citius-api-go, not here.
+    - IMPORT_USED
+build:
+  excludes:
+    - google

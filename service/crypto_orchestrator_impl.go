@@ -12,7 +12,7 @@ import (
 	"github.com/agile-crypto/citius-core/policy"
 	"github.com/agile-crypto/citius-core/provider"
 	"github.com/agile-crypto/citius-core/template"
-	providerpb "github.com/agile-crypto/citius-server/gen/go/server/provider"
+	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 	"google.golang.org/protobuf/proto"
 )
 

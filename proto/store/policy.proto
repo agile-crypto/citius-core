@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package caas.storage.v1;
+option go_package = "github.com/agile-crypto/citius-core/store;store";
+
+import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
+
+// PolicyScope controls which operations a policy governs.
+enum PolicyScope {
+  POLICY_SCOPE_UNSPECIFIED = 0;
+  POLICY_SCOPE_GLOBAL      = 1;
+  POLICY_SCOPE_KEY         = 2;
+  POLICY_SCOPE_OPERATION   = 3;
+}
+
+// StoredPolicy is the persisted representation of an access-control + algorithm policy.
+message StoredPolicy {
+  string public_id         = 1 [(buf.validate.field).string = {prefix: "pol_", min_len: 5}];
+  string name              = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  PolicyScope scope        = 3;
+  bytes  rules_json        = 4;   // opaque JSON blob — parsed by policy core
+  string version           = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp update_time = 7;
+  map<string, string> labels = 8;
+}

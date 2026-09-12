@@ -8,7 +8,7 @@ import (
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/provider"
-	providerpb "github.com/agile-crypto/citius-server/gen/go/server/provider"
+	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+// define a key package within the Boundary controller storage layer
+package caas.storage.v1;
+option go_package = "github.com/agile-crypto/citius-core/store;store";
+
+import "api/types/common.proto";
+
+
+message ScopeSpecification {
+    caas.crypto.v1.ScopeSpecification scope_specification = 3;
+}

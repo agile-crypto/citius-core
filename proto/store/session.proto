@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package caas.storage.v1;
+option go_package = "github.com/agile-crypto/citius-core/store;store";
+
+import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
+
+// SessionStatus represents the lifecycle state of a multi-part session.
+enum SessionStatus {
+  SESSION_STATUS_UNSPECIFIED = 0;
+  SESSION_STATUS_ACTIVE      = 1;
+  SESSION_STATUS_FINALISED   = 2;
+  SESSION_STATUS_EXPIRED     = 3;
+}
+
+// StoredSession holds the state for a multi-part streaming operation.
+message StoredSession {
+  string        public_id    = 1 [(buf.validate.field).string = {prefix: "ses_", min_len: 5}];
+  string        key_id       = 2 [(buf.validate.field).string = {prefix: "key_", min_len: 5}];
+  string        operation    = 3 [(buf.validate.field).string = {min_len: 1, max_len: 64}];  // "sign", "verify", "encrypt", "decrypt"
+  bytes         state        = 4;   // provider-specific serialised state
+  SessionStatus status       = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp expire_time = 7;
+}

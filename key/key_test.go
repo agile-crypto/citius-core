@@ -8,7 +8,7 @@ import (
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/key"
-	storepb "github.com/agile-crypto/citius-server/gen/go/server/store"
+	storepb "github.com/agile-crypto/citius-core/store"
 	"github.com/stretchr/testify/require"
 )
 

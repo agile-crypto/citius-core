@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package caas.storage.v1;
+option go_package = "github.com/agile-crypto/citius-core/store;store";
+
+import "google/protobuf/timestamp.proto";
+import "api/types/common.proto";
+
+import "buf/validate/validate.proto";
+
+
+enum KeyVersionStatus {
+  KEY_VERSION_STATUS_UNSPECIFIED = 0;
+  KEY_VERSION_STATUS_ACTIVE = 1;
+  KEY_VERSION_STATUS_INACTIVE = 2;
+  KEY_VERSION_STATUS_DESTROYED = 3;
+}
+// KeyVersion represents a version of a key with its material
+message KeyVersion {
+  // @gotags: gorm:"primary_key"
+  string public_id = 1 [(buf.validate.field).string = {prefix: "ver_", min_len: 5}];
+  // version number
+  // @gotags: gorm:"not_null;uniqueIndex:key_version_idx"
+  uint32 version = 2;
+  // the public id of the key to which this version belongs
+  // @gotags: gorm:"not_null,index;uniqueIndex:key_version_idx"
+  string key_id = 3 [(buf.validate.field).string = {prefix: "key_", min_len: 5}];
+  // @gotags: gorm:"default:current_timestamp"
+  google.protobuf.Timestamp create_time = 4;
+  // @gotags: gorm:"default:current_timestamp"
+  google.protobuf.Timestamp update_time = 5;
+  // ciphertext key material stored in the database
+  // @gotags: gorm:"column:key_material;not_null" wrapping:"ct,key_material"
+  bytes ct_key_material = 6;
+  // plain text version of the decrypted key material
+  // we are NOT storing this plain-text key material in the db
+  // @gotags: gorm:"-" wrapping:"pt,key_material"
+  bytes key_material = 7;
+  // Template associated with the key material
+  // @gotags: gorm:"not_null"
+  string template_id = 8;
+  // digest used for integrity checks
+  // @gotags: gorm:"not_null"
+  bytes digest = 9;
+  // digest algorithm used to calculate the digest
+  // @gotags: gorm:"not_null"
+  string digest_algorithm = 10;
+  // id of the key used to encrypt the key material
+  // @gotags: gorm:"not_null"
+  string wrapping_key_id = 11 [(buf.validate.field) = {ignore: IGNORE_IF_ZERO_VALUE, string: {prefix: "key_", min_len: 5}}];
+  // id of the provider where the key lives
+  // @gotags: gorm:"not_null"
+  string provider_id = 12 [(buf.validate.field).string = {prefix: "prv_", min_len: 5}];
+  // Lifecycle state of the key version
+  // @gotags: gorm:"not_null"
+  caas.crypto.v1.KeyLifecycleState state = 13;
+}
+
+// Key represents a cryptographic key stored in the database
+message Key {
+  // @gotags: gorm:"primary_key"
+  string public_id = 1 [(buf.validate.field).string = {prefix: "key_", min_len: 5}]; 
+  // @gotags: gorm:"not_null"
+  string name = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  // @gotags: gorm:"default:current_timestamp"
+  google.protobuf.Timestamp create_time = 3;
+  // @gotags: gorm:"default:current_timestamp"
+  google.protobuf.Timestamp update_time = 4;
+  // @gotags: gorm:"default:null"
+  google.protobuf.Timestamp destroy_time = 5;
+  // @gotags: gorm:"not_null"
+  string primitive = 6;
+  // @gotags: gorm:"not_null"
+  bytes scope_specification = 7;
+  // @gotags: gorm:"not_null"
+  string policy_id = 8 [(buf.validate.field).string = {prefix: "pol_", min_len: 5}];
+  // id of the current version of the key
+  // @gotags: gorm:"not_null"
+  uint32 current_version = 9 [(buf.validate.field).uint32.gte = 1];
+  // Labels associated with the key
+  map<string, string> labels = 10;
+  caas.crypto.v1.KeyLifecycleState state = 11;
+}

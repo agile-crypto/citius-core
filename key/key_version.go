@@ -6,7 +6,7 @@ import (
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
-	storepb "github.com/agile-crypto/citius-server/gen/go/server/store"
+	storepb "github.com/agile-crypto/citius-core/store"
 	"google.golang.org/protobuf/proto"
 )
 

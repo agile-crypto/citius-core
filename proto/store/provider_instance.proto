@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package caas.storage.v1;
+option go_package = "github.com/agile-crypto/citius-core/store;store";
+
+import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
+
+// StoredProviderInstance is the persisted configuration for one registered provider.
+message StoredProviderInstance {
+  string public_id         = 1 [(buf.validate.field).string = {prefix: "prv_", min_len: 5}];
+  string name              = 2 [(buf.validate.field).string = {min_len: 1, max_len: 256}];
+  string provider_type     = 3 [(buf.validate.field).string = {min_len: 1, max_len: 64}];  // "software", "hsm", ...
+  bytes  config_json       = 4;   // opaque provider-specific config
+  bool   is_default        = 5;
+  google.protobuf.Timestamp create_time = 6;
+  google.protobuf.Timestamp update_time = 7;
+}

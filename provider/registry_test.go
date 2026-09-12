@@ -7,7 +7,7 @@ import (
 
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/provider"
-	providerpb "github.com/agile-crypto/citius-server/gen/go/server/provider"
+	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 )
 
 // stubProvider is a minimal Backend for tests.

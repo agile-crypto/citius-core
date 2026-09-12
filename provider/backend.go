@@ -28,7 +28,7 @@ import (
 	"context"
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
-	providerpb "github.com/agile-crypto/citius-server/gen/go/server/provider"
+	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 )
 
 // Backend is the Go interface that every crypto provider must implement.
