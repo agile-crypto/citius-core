@@ -1,0 +1,199 @@
+version: "2"
+run:
+  modules-download-mode: readonly
+linters:
+  default: none
+  enable:
+    - cyclop
+    - depguard
+    - errcheck
+    - errorlint
+    - exhaustive
+    - forbidigo
+    - gocognit
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - revive
+    - staticcheck
+    - unused
+  settings:
+    cyclop:
+      max-complexity: 15
+    depguard:
+      rules:
+        # ── Leaf-package strict rules ──────────────────────────────
+        # The repo root is the shared-vocabulary leaf (formerly citius-server's
+        # core/*.go, before citius-core became its own module -- see doc.go).
+        core-is-leaf:
+          list-mode: strict
+          files:
+            - '**/citius-core/*.go'
+            - '!$test'
+          allow:
+            - $gostd
+            - github.com/agile-crypto/citius-core/errors
+            - github.com/oklog/ulid/v2
+            - github.com/agile-crypto/citius-api-go/gen/go/types
+            - google.golang.org/protobuf/proto
+        # errors/ is the absolute leaf — stdlib + gRPC status codes.
+        errors-is-leaf:
+          list-mode: strict
+          files:
+            - '**/errors/*.go'
+            - '!$test'
+          allow:
+            - $gostd
+            - google.golang.org/grpc/codes
+        # ── Sibling bounded-context isolation ─────────────────────
+        # Each domain package lists the sibling domain packages it must NOT
+        # import. service/ is deliberately not covered here — it is the
+        # orchestration layer above these domains and is allowed to depend
+        # on all of them.
+        policy-no-siblings:
+          list-mode: lax
+          files:
+            - '**/policy/*.go'
+          deny:
+            - pkg: github.com/agile-crypto/citius-core/key
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/template
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/provider
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/crypto
+              desc: sibling bounded context
+        key-no-siblings:
+          list-mode: lax
+          files:
+            - '**/key/*.go'
+          deny:
+            - pkg: github.com/agile-crypto/citius-core/policy
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/template
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/provider
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/crypto
+              desc: sibling bounded context
+        provider-no-siblings:
+          list-mode: lax
+          files:
+            - '**/provider/*.go'
+          deny:
+            - pkg: github.com/agile-crypto/citius-core/policy
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/key
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/template
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/crypto
+              desc: sibling bounded context
+        template-no-siblings:
+          list-mode: lax
+          files:
+            - '**/template/*.go'
+          deny:
+            - pkg: github.com/agile-crypto/citius-core/policy
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/key
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/provider
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/crypto
+              desc: sibling bounded context
+        # crypto/ is a shared-vocabulary leaf (VOs for crypto operations + Session aggregate).
+        # It must not import any sibling domain package.
+        crypto-no-siblings:
+          list-mode: lax
+          files:
+            - '**/crypto/*.go'
+          deny:
+            - pkg: github.com/agile-crypto/citius-core/policy
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/key
+              desc: sibling bounded context - use []byte for key material in VOs
+            - pkg: github.com/agile-crypto/citius-core/template
+              desc: sibling bounded context
+            - pkg: github.com/agile-crypto/citius-core/provider
+              desc: sibling bounded context
+        # ── Test-dependency fence ─────────────────────────────────
+        no-test-deps-in-prod:
+          list-mode: lax
+          files:
+            - '!$test'
+          deny:
+            - pkg: github.com/stretchr/testify
+              desc: testify is test-only
+    exhaustive:
+      default-signifies-exhaustive: true
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: '^fmt\.Print.*$'
+          msg: use structured logging instead of fmt.Print
+        - pattern: '^fmt\.Errorf$'
+          msg: use errors.New or errors.Wrap from citius-core/errors
+        - pattern: '^os\.Exit$'
+          msg: return errors; os.Exit belongs in main() only
+        - pattern: '^log\.(Fatal|Panic).*$'
+          msg: use error returns; no log.Fatal in library code
+    gocognit:
+      min-complexity: 20
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: receiver-naming
+        - name: deep-exit
+        - name: dot-imports
+        - name: import-alias-naming
+          arguments:
+            - '^[a-z][a-z0-9]*$'
+        - name: filename-format
+          arguments:
+            - '^[_a-z][_a-z0-9]*\.go$'
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - forbidigo
+        path: '(key|policy|template)/'
+        text: 'fmt\.Errorf'
+      - linters:
+          - cyclop
+          - errcheck
+          - forbidigo
+          - gosec
+        path: _test\.go
+    paths:
+      - store
+      - gen
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - store
+      - gen
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
