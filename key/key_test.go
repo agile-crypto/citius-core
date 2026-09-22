@@ -43,13 +43,10 @@ func TestKey_NewKey(t *testing.T) {
 				opts = append(opts, key.WithLabels(tt.labels))
 				opts = append(opts, key.WithState(tt.state))
 			}
-			spBytes, err := sp.Serialize(ctx)
-			require.NoError(t, err)
-			k, err := key.NewKey(ctx, "id", "policyID", sp, 13, opts...)
+			k, err := key.NewKey(ctx, "id", "policyID", sp.Scope.GetPrimitive(), 13, opts...)
 			require.NoError(t, err)
 			require.Equal(t, k.PublicId, "id")
 			require.Equal(t, k.PolicyId, "policyID")
-			require.Equal(t, k.ScopeSpecification, spBytes)
 			require.Equal(t, k.CurrentVersion, uint32(13))
 			if tt.withOpts {
 				require.Equal(t, k.Name, tt.keyName)
@@ -69,11 +66,10 @@ func TestKey_NewKey(t *testing.T) {
 func TestKey_VetForWrite_Create_happyPath(t *testing.T) {
 	k := &key.Key{
 		Key: &storepb.Key{
-			PublicId:           "key_01HXYZ",
-			Name:               "signing-key",
-			Primitive:          "signature",
-			State:              types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE,
-			ScopeSpecification: []byte(`{"primitive":"signature"}`),
+			PublicId:  "key_01HXYZ",
+			Name:      "signing-key",
+			Primitive: "signature",
+			State:     types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE,
 		},
 	}
 	if err := k.VetForWrite(context.Background(), core.OpCreate); err != nil {

@@ -152,7 +152,7 @@ func (o *cryptoOrchestrator) Sign(ctx context.Context, req crypto.SignRequest) (
 	}
 
 	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, k, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
 		return crypto.SignResult{}, err
 	}
 
@@ -259,7 +259,7 @@ func (o *cryptoOrchestrator) Verify(ctx context.Context, req crypto.VerifyReques
 	}
 
 	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, k, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
 		return crypto.VerifyResult{}, err
 	}
 
@@ -385,7 +385,7 @@ func (o *cryptoOrchestrator) DigestSign(ctx context.Context, req crypto.DigestSi
 	}
 
 	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, k, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
 		return crypto.SignResult{}, err
 	}
 
@@ -498,7 +498,7 @@ func (o *cryptoOrchestrator) DigestVerify(ctx context.Context, req crypto.Digest
 	}
 
 	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, k, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
 		return crypto.VerifyResult{}, err
 	}
 
@@ -641,7 +641,7 @@ func (o *cryptoOrchestrator) Encrypt(ctx context.Context, req crypto.EncryptRequ
 	}
 
 	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateEncryptionScopeParams(ctx, op, k, req.EncryptionScopeFields); err != nil {
+	if err = validateEncryptionScopeParams(ctx, op, kv, req.EncryptionScopeFields); err != nil {
 		return crypto.EncryptResult{}, err
 	}
 
@@ -743,7 +743,7 @@ func (o *cryptoOrchestrator) Decrypt(ctx context.Context, req crypto.DecryptRequ
 	}
 
 	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateEncryptionScopeParams(ctx, op, k, req.EncryptionScopeFields); err != nil {
+	if err = validateEncryptionScopeParams(ctx, op, kv, req.EncryptionScopeFields); err != nil {
 		return crypto.DecryptResult{}, err
 	}
 
@@ -837,7 +837,7 @@ func (o *cryptoOrchestrator) GenerateRandom(ctx context.Context, _ int) ([]byte,
 // ---------------------------------------------------------------------------
 
 // validateSignatureScopeParams validates that the caller's scope_params
-// are compatible with the key's declared ScopeSpecification.
+// are compatible with the selected key version's declared ScopeSpecification.
 //
 // The orchestrator handles:
 //  1. Vendor short-circuit (vendor context bypasses standard scope matching)
@@ -850,7 +850,7 @@ func (o *cryptoOrchestrator) GenerateRandom(ctx context.Context, _ int) ([]byte,
 func validateSignatureScopeParams(
 	ctx context.Context,
 	op errors.Op,
-	k *key.Key,
+	kv *key.Version,
 	sf crypto.SignatureScopeFields,
 ) error {
 	// 1. Vendor context bypasses standard scope matching.
@@ -871,9 +871,9 @@ func validateSignatureScopeParams(
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "signature scope field is required")
 	}
 
-	// 3. Deserialize the key's scope specification.
+	// 3. Deserialize the selected key version's scope specification.
 	keyScopeSpec := &core.ScopeSpecification{}
-	err := keyScopeSpec.Deserialize(ctx, k.GetScopeSpecification())
+	err := keyScopeSpec.Deserialize(ctx, kv.GetScopeSpecification())
 	if err != nil {
 		return errors.Wrap(ctx, op, err)
 	}
@@ -885,7 +885,7 @@ func validateSignatureScopeParams(
 }
 
 // validateEncryptionScopeParams validates that the caller's scope_params are
-// compatible with the key's declared ScopeSpecification — the encryption
+// compatible with the selected key version's ScopeSpecification — the encryption
 // analogue of validateSignatureScopeParams.
 //
 // AeadParams maps to the single core.ScopeAeadStandard scope (a random-nonce
@@ -902,7 +902,7 @@ func validateSignatureScopeParams(
 func validateEncryptionScopeParams(
 	ctx context.Context,
 	op errors.Op,
-	k *key.Key,
+	kv *key.Version,
 	sf crypto.EncryptionScopeFields,
 ) error {
 	// 1. Vendor params bypass standard scope matching.
@@ -921,9 +921,9 @@ func validateEncryptionScopeParams(
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "encryption scope field is required")
 	}
 
-	// 3. Deserialize the key's scope specification.
+	// 3. Deserialize the selected key version's scope specification.
 	keyScopeSpec := &core.ScopeSpecification{}
-	err := keyScopeSpec.Deserialize(ctx, k.GetScopeSpecification())
+	err := keyScopeSpec.Deserialize(ctx, kv.GetScopeSpecification())
 	if err != nil {
 		return errors.Wrap(ctx, op, err)
 	}

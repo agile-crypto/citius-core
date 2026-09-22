@@ -115,9 +115,12 @@ type KeyVersion struct {
 	ProviderId string `protobuf:"bytes,12,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
 	// Lifecycle state of the key version
 	// @gotags: gorm:"not_null"
-	State         types.KeyLifecycleState `protobuf:"varint,13,opt,name=state,proto3,enum=caas.crypto.v1.KeyLifecycleState" json:"state,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	State types.KeyLifecycleState `protobuf:"varint,13,opt,name=state,proto3,enum=caas.crypto.v1.KeyLifecycleState" json:"state,omitempty"`
+	// Scope and filtering properties effective for this key version
+	// @gotags: gorm:"not_null"
+	ScopeSpecification []byte `protobuf:"bytes,14,opt,name=scope_specification,json=scopeSpecification,proto3" json:"scope_specification,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KeyVersion) Reset() {
@@ -241,6 +244,13 @@ func (x *KeyVersion) GetState() types.KeyLifecycleState {
 	return types.KeyLifecycleState(0)
 }
 
+func (x *KeyVersion) GetScopeSpecification() []byte {
+	if x != nil {
+		return x.ScopeSpecification
+	}
+	return nil
+}
+
 // Key represents a cryptographic key stored in the database
 type Key struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -256,8 +266,6 @@ type Key struct {
 	DestroyTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=destroy_time,json=destroyTime,proto3" json:"destroy_time,omitempty"`
 	// @gotags: gorm:"not_null"
 	Primitive string `protobuf:"bytes,6,opt,name=primitive,proto3" json:"primitive,omitempty"`
-	// @gotags: gorm:"not_null"
-	ScopeSpecification []byte `protobuf:"bytes,7,opt,name=scope_specification,json=scopeSpecification,proto3" json:"scope_specification,omitempty"`
 	// @gotags: gorm:"not_null"
 	PolicyId string `protobuf:"bytes,8,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
 	// id of the current version of the key
@@ -342,13 +350,6 @@ func (x *Key) GetPrimitive() string {
 	return ""
 }
 
-func (x *Key) GetScopeSpecification() []byte {
-	if x != nil {
-		return x.ScopeSpecification
-	}
-	return nil
-}
-
 func (x *Key) GetPolicyId() string {
 	if x != nil {
 		return x.PolicyId
@@ -381,7 +382,7 @@ var File_store_key_proto protoreflect.FileDescriptor
 
 const file_store_key_proto_rawDesc = "" +
 	"\n" +
-	"\x0fstore/key.proto\x12\x0fcaas.storage.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16api/types/common.proto\x1a\x1bbuf/validate/validate.proto\"\xc4\x04\n" +
+	"\x0fstore/key.proto\x12\x0fcaas.storage.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16api/types/common.proto\x1a\x1bbuf/validate/validate.proto\"\xf5\x04\n" +
 	"\n" +
 	"KeyVersion\x12*\n" +
 	"\tpublic_id\x18\x01 \x01(\tB\r\xbaH\n" +
@@ -404,7 +405,8 @@ const file_store_key_proto_rawDesc = "" +
 	"\vprovider_id\x18\f \x01(\tB\r\xbaH\n" +
 	"r\b\x10\x05:\x04prv_R\n" +
 	"providerId\x127\n" +
-	"\x05state\x18\r \x01(\x0e2!.caas.crypto.v1.KeyLifecycleStateR\x05state\"\xe5\x04\n" +
+	"\x05state\x18\r \x01(\x0e2!.caas.crypto.v1.KeyLifecycleStateR\x05state\x12/\n" +
+	"\x13scope_specification\x18\x0e \x01(\fR\x12scopeSpecification\"\xb4\x04\n" +
 	"\x03Key\x12*\n" +
 	"\tpublic_id\x18\x01 \x01(\tB\r\xbaH\n" +
 	"r\b\x10\x05:\x04key_R\bpublicId\x12\x1e\n" +
@@ -415,8 +417,7 @@ const file_store_key_proto_rawDesc = "" +
 	"\vupdate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"updateTime\x12=\n" +
 	"\fdestroy_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vdestroyTime\x12\x1c\n" +
-	"\tprimitive\x18\x06 \x01(\tR\tprimitive\x12/\n" +
-	"\x13scope_specification\x18\a \x01(\fR\x12scopeSpecification\x12*\n" +
+	"\tprimitive\x18\x06 \x01(\tR\tprimitive\x12*\n" +
 	"\tpolicy_id\x18\b \x01(\tB\r\xbaH\n" +
 	"r\b\x10\x05:\x04pol_R\bpolicyId\x120\n" +
 	"\x0fcurrent_version\x18\t \x01(\rB\a\xbaH\x04*\x02(\x01R\x0ecurrentVersion\x128\n" +

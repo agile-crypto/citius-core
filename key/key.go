@@ -27,7 +27,7 @@ type Key struct {
 //   - WithName: sets the Name field (defaults to the key ID if not provided)
 //   - WithLabels: sets the Labels field (defaults to an empty map if not provided)
 //   - WithState : sets the State field (defaults to [types.KeyLifecycleState_PRE_ACTIVE] if not provided)
-func NewKey(ctx context.Context, id, policyID string, scopeSpec *core.ScopeSpecification, currentKeyVersion uint32, opt ...Option) (*Key, error) {
+func NewKey(ctx context.Context, id, policyID string, primitive core.Primitive, currentKeyVersion uint32, opt ...Option) (*Key, error) {
 	const op = "key.newKey"
 	if id == "" {
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "id is required")
@@ -35,8 +35,8 @@ func NewKey(ctx context.Context, id, policyID string, scopeSpec *core.ScopeSpeci
 	if policyID == "" {
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "policyId is required")
 	}
-	if scopeSpec == nil {
-		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "scopeSpec is required")
+	if !primitive.IsValid() {
+		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "primitive is required")
 	}
 	opts := getOpts(opt...)
 	if opts.withName == "" {
@@ -47,19 +47,14 @@ func NewKey(ctx context.Context, id, policyID string, scopeSpec *core.ScopeSpeci
 		// if no state is provided, default to PRE_ACTIVE
 		opts.withState = types.KeyLifecycleState_KEY_LIFECYCLE_STATE_PRE_ACTIVE
 	}
-	spBytes, err := scopeSpec.Serialize(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
 	k := &storepb.Key{
-		PublicId:           id,
-		Name:               opts.withName,
-		PolicyId:           policyID,
-		Primitive:          scopeSpec.Scope.GetPrimitive().String(),
-		ScopeSpecification: spBytes,
-		CurrentVersion:     currentKeyVersion,
-		Labels:             opts.withLabels,
-		State:              opts.withState,
+		PublicId:       id,
+		Name:           opts.withName,
+		PolicyId:       policyID,
+		Primitive:      primitive.String(),
+		CurrentVersion: currentKeyVersion,
+		Labels:         opts.withLabels,
+		State:          opts.withState,
 	}
 	return &Key{Key: k}, nil
 }
@@ -83,9 +78,6 @@ func (k *Key) VetForWrite(ctx context.Context, op core.WriteOp) error {
 		}
 		if k.GetPrimitive() == "" {
 			return errors.New(ctx, opCreate, errors.CodeInvalidArgument, "primitive is required")
-		}
-		if k.ScopeSpecification == nil {
-			return errors.New(ctx, opCreate, errors.CodeInvalidArgument, "scope_specification is required")
 		}
 	case core.OpUpdate:
 		if k.GetPublicId() == "" {

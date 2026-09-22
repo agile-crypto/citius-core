@@ -162,12 +162,14 @@ func buildKeyMetadata(ctx context.Context, k *key.Key, v *key.Version) (*KeyMeta
 		Labels:         k.GetLabels(),
 	}
 
-	if data := k.GetScopeSpecification(); len(data) > 0 {
-		scopeSpec := &core.ScopeSpecification{}
-		if err := scopeSpec.Deserialize(ctx, data); err != nil {
-			return nil, errors.Wrap(ctx, op, err)
+	if v != nil {
+		if data := v.GetScopeSpecification(); len(data) > 0 {
+			scopeSpec := &core.ScopeSpecification{}
+			if err := scopeSpec.Deserialize(ctx, data); err != nil {
+				return nil, errors.Wrap(ctx, op, err)
+			}
+			md.ScopeSpec = scopeSpec
 		}
-		md.ScopeSpec = scopeSpec
 	}
 
 	if v != nil {
@@ -238,7 +240,7 @@ func (r *keyOrchestrator) generateAndPersistKey(
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	k, err := key.NewKey(ctx, keyID, req.PolicyID, scopeSpec, initialVersion,
+	k, err := key.NewKey(ctx, keyID, req.PolicyID, scopeSpec.Scope.GetPrimitive(), initialVersion,
 		key.WithName(req.Name),
 		key.WithLabels(req.Labels),
 		key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE),
@@ -247,7 +249,7 @@ func (r *keyOrchestrator) generateAndPersistKey(
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	v, err := key.NewVersion(ctx, versionID, keyID, tmpl.TemplateID(), prov.Name(), initialVersion, genRespBytes,
+	v, err := key.NewVersion(ctx, versionID, keyID, tmpl.TemplateID(), prov.Name(), initialVersion, genRespBytes, scopeSpec,
 		key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -348,7 +350,8 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	if spec.KeyName == "" {
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "key name is required")
 	}
-	// Retrieve the keyO's current scope specification and use that for template selection.
+	// Retrieve the key and current version. Until caller-supplied scope transforms
+	// are enabled, the current version's scope drives template selection.
 	keyO, err := r.keys.GetKeyByName(ctx, spec.KeyName)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -359,8 +362,12 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 		// TODO: Enable scope specification update across versions
 		return nil, errors.New(ctx, op, errors.CodeNotImplemented, "transformation with scope specification is not supported")
 	}
+	lastVersion, err := r.keys.GetVersion(ctx, keyO.PublicId, keyO.CurrentVersion)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
 	scopeSpec := &core.ScopeSpecification{}
-	err = scopeSpec.Deserialize(ctx, keyO.ScopeSpecification)
+	err = scopeSpec.Deserialize(ctx, lastVersion.GetScopeSpecification())
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -372,11 +379,6 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	// TODO: Handle retain bytes option (requires ability to get get the key size for a template)
 	if spec.RetainBytes {
 		return nil, errors.New(ctx, op, errors.CodeNotImplemented, "transformation with retain bytes is not supported")
-	}
-
-	lastVersion, err := r.keys.GetVersion(ctx, keyO.PublicId, keyO.CurrentVersion)
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
 	}
 
 	provider, err := r.providers.Get(ctx, lastVersion.ProviderId)
@@ -411,7 +413,7 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	newVersionNumber := lastVersion.GetVersion() + 1
 	newVersionID := computeVersionID(keyO.GetPublicId(), newVersionNumber)
 	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), template.TemplateID(), provider.Name(), newVersionNumber,
-		genRespBytes, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
+		genRespBytes, scopeSpec, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}

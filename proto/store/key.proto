@@ -54,6 +54,9 @@ message KeyVersion {
   // Lifecycle state of the key version
   // @gotags: gorm:"not_null"
   caas.crypto.v1.KeyLifecycleState state = 13;
+  // Scope and filtering properties effective for this key version
+  // @gotags: gorm:"not_null"
+  bytes scope_specification = 14;
 }
 
 // Key represents a cryptographic key stored in the database
@@ -70,8 +73,6 @@ message Key {
   google.protobuf.Timestamp destroy_time = 5;
   // @gotags: gorm:"not_null"
   string primitive = 6;
-  // @gotags: gorm:"not_null"
-  bytes scope_specification = 7;
   // @gotags: gorm:"not_null"
   string policy_id = 8 [(buf.validate.field).string = {prefix: "pol_", min_len: 5}];
   // id of the current version of the key

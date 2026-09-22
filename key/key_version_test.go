@@ -24,11 +24,14 @@ func TestKeyVersion_NewVersion(t *testing.T) {
 	for _, tt := range tc {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
+			scopeSpec := &core.ScopeSpecification{Scope: core.ScopeSignatureStandard}
 			opts := []key.Option{}
 			if tt.withOpts {
 				opts = append(opts, key.WithState(tt.state), key.WithWrappingKeyID(tt.wrappingKeyID))
 			}
-			v, err := key.NewVersion(ctx, "ver_01HXYZ", "key_01HXYZ", "template_01", "software", 1, []byte("key-material"), opts...)
+			v, err := key.NewVersion(ctx, "ver_01HXYZ", "key_01HXYZ", "template_01", "software", 1, []byte("key-material"), scopeSpec, opts...)
+			require.NoError(t, err)
+			scopeBytes, err := scopeSpec.Serialize(ctx)
 			require.NoError(t, err)
 			require.Equal(t, "ver_01HXYZ", v.PublicId)
 			require.Equal(t, "key_01HXYZ", v.KeyId)
@@ -36,6 +39,7 @@ func TestKeyVersion_NewVersion(t *testing.T) {
 			require.Equal(t, "software", v.ProviderId)
 			require.Equal(t, uint32(1), v.Version)
 			require.Equal(t, []byte("key-material"), v.KeyMaterial)
+			require.Equal(t, scopeBytes, v.ScopeSpecification)
 			if tt.withOpts {
 				require.Equal(t, tt.state, v.State)
 				require.Equal(t, tt.wrappingKeyID, v.WrappingKeyId)
@@ -46,13 +50,29 @@ func TestKeyVersion_NewVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestKeyVersion_NewVersion_requiresScopeSpecification(t *testing.T) {
+	_, err := key.NewVersion(
+		context.Background(),
+		"ver_01HXYZ",
+		"key_01HXYZ",
+		"template_01",
+		"software",
+		1,
+		[]byte("key-material"),
+		nil,
+	)
+	require.Error(t, err)
+}
+
 func TestKeyVersion_VetForWrite_Create_happyPath(t *testing.T) {
 	v := &key.Version{KeyVersion: &storepb.KeyVersion{
-		PublicId:   "ver_01HXYZ",
-		KeyId:      "key_01HXYZ",
-		Version:    1,
-		ProviderId: "software",
-		Digest:     []byte("mac"),
+		PublicId:           "ver_01HXYZ",
+		KeyId:              "key_01HXYZ",
+		Version:            1,
+		ProviderId:         "software",
+		Digest:             []byte("mac"),
+		ScopeSpecification: []byte("scope"),
 	}}
 	if err := v.VetForWrite(context.Background(), core.OpCreate); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -85,13 +105,16 @@ func TestKeyVersion_VetForWrite_Create_missingProviderId(t *testing.T) {
 
 func TestKeyVersion_Clone_independent(t *testing.T) {
 	original := &key.Version{KeyVersion: &storepb.KeyVersion{
-		PublicId: "ver_01HXYZ",
-		KeyId:    "key_01HXYZ",
+		PublicId:           "ver_01HXYZ",
+		KeyId:              "key_01HXYZ",
+		ScopeSpecification: []byte("scope"),
 	}}
 	cloned := original.Clone()
 	if original.KeyId != cloned.KeyId || original.PublicId != cloned.PublicId {
 		t.Error("Clone() did not produce an independent copy — mutations alias the original")
 	}
+	cloned.ScopeSpecification[0] = 'S'
+	require.Equal(t, []byte("scope"), original.ScopeSpecification)
 }
 
 func TestKeyVersion_Version_accessor(t *testing.T) {
