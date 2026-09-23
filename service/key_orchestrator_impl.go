@@ -370,7 +370,7 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	if err := validateTransformScope(ctx, keyO.GetPrimitive(), spec.ScopeSpecification); err != nil {
+	if err = validateTransformScope(ctx, keyO.GetPrimitive(), spec.ScopeSpecification); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
