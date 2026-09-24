@@ -366,7 +366,7 @@ func validateTransformScopePresent(ctx context.Context, scopeSpec *core.ScopeSpe
 	return nil
 }
 
-func retainedKeyMaterial(ctx context.Context, sourceTemplate, targetTemplate *template.Template, stored []byte) ([]byte, error) {
+func retainedKeyMaterial(ctx context.Context, prov provider.Backend, sourceTemplate, targetTemplate *template.Template, stored []byte) ([]byte, error) {
 	const op = "service.retainedKeyMaterial"
 	compatible, err := template.CompatibleKeyMaterial(sourceTemplate, targetTemplate)
 	if err != nil {
@@ -383,6 +383,16 @@ func retainedKeyMaterial(ctx context.Context, sourceTemplate, targetTemplate *te
 	if err = proto.Unmarshal(stored, &storedResponse); err != nil {
 		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
 			"stored key payload for template %q is invalid: %v", sourceTemplate.TemplateID(), err)
+	}
+	checker, ok := prov.(provider.KeyMaterialCompatibilityChecker)
+	if !ok {
+		return nil, errors.New(ctx, op, errors.CodeNotImplemented,
+			"provider %q cannot validate retained key material", prov.Name())
+	}
+	if err = checker.ValidateRetainedKey(ctx, &storedResponse, sourceTemplate.GetAlgorithm(), targetTemplate.GetAlgorithm()); err != nil {
+		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"provider %q rejected retained material from template %q for template %q: %v",
+			prov.Name(), sourceTemplate.TemplateID(), targetTemplate.TemplateID(), err)
 	}
 	return append([]byte(nil), stored...), nil
 }
@@ -424,15 +434,22 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	var retainedMaterial []byte
+	var sourceTemplate *template.Template
 	if spec.RetainBytes {
-		sourceTemplate, getErr := r.templates.Get(ctx, lastVersion.GetTemplateId())
-		if getErr != nil {
-			return nil, errors.Wrap(ctx, op, getErr)
-		}
-		retainedMaterial, err = retainedKeyMaterial(ctx, sourceTemplate, targetTemplate, lastVersion.GetKeyMaterial())
+		sourceTemplate, err = r.templates.Get(ctx, lastVersion.GetTemplateId())
 		if err != nil {
 			return nil, errors.Wrap(ctx, op, err)
+		}
+		compatible, compatibilityErr := template.CompatibleKeyMaterial(sourceTemplate, targetTemplate)
+		if compatibilityErr != nil {
+			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+				"cannot retain material from template %q for template %q: %v",
+				sourceTemplate.TemplateID(), targetTemplate.TemplateID(), compatibilityErr)
+		}
+		if !compatible {
+			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+				"cannot retain material from template %q for incompatible template %q",
+				sourceTemplate.TemplateID(), targetTemplate.TemplateID())
 		}
 	}
 
@@ -446,6 +463,14 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	})
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
+	}
+
+	var retainedMaterial []byte
+	if spec.RetainBytes {
+		retainedMaterial, err = retainedKeyMaterial(ctx, provider, sourceTemplate, targetTemplate, lastVersion.GetKeyMaterial())
+		if err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
 	}
 
 	// Validation (same as for key creation)

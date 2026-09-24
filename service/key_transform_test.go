@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	stderrors "errors"
 	"testing"
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
+	"github.com/agile-crypto/citius-core/provider"
 	"github.com/agile-crypto/citius-core/template"
 	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 	"github.com/stretchr/testify/require"
@@ -82,8 +84,14 @@ func TestRetainedKeyMaterial(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	retained, err := retainedKeyMaterial(ctx, source, target, stored)
+	checker := &retainedKeyChecker{}
+	retained, err := retainedKeyMaterial(ctx, checker, source, target, stored)
 	require.NoError(t, err)
+	require.Equal(t, 1, checker.calls)
+	require.Equal(t, []byte("private-material"), checker.material.GetKeyMaterial())
+	require.Equal(t, []byte("public-material"), checker.material.GetPublicKeyBytes())
+	require.Same(t, source.GetAlgorithm(), checker.source)
+	require.Same(t, target.GetAlgorithm(), checker.target)
 	require.Equal(t, stored, retained)
 	require.NotSame(t, &stored[0], &retained[0])
 
@@ -102,20 +110,67 @@ func TestRetainedKeyMaterial_rejectsInvalidInput(t *testing.T) {
 	stored, err := proto.Marshal(&providerpb.GenerateKeyResponse{KeyMaterial: []byte("material")})
 	require.NoError(t, err)
 
-	_, err = retainedKeyMaterial(ctx, source, incompatible, stored)
+	checker := &retainedKeyChecker{}
+	_, err = retainedKeyMaterial(ctx, checker, source, incompatible, stored)
 	requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
 	require.ErrorContains(t, err, "incompatible template")
+	require.Zero(t, checker.calls)
 
-	_, err = retainedKeyMaterial(ctx, source, source, []byte{0xff})
+	_, err = retainedKeyMaterial(ctx, checker, source, source, []byte{0xff})
 	requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
 	require.ErrorContains(t, err, "stored key payload")
+	require.Zero(t, checker.calls)
 
 	missingFamily := source.Clone()
 	missingFamily.Proto().KeyMaterialFamily = ""
-	_, err = retainedKeyMaterial(ctx, missingFamily, source, stored)
+	_, err = retainedKeyMaterial(ctx, checker, missingFamily, source, stored)
 	requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
 	require.ErrorContains(t, err, "key_material_family is required")
+	require.Zero(t, checker.calls)
+
+	_, err = retainedKeyMaterial(ctx, bareRetainedBackend{}, source, source, stored)
+	requireCoreErrorCode(t, err, errors.CodeNotImplemented)
+	require.ErrorContains(t, err, "cannot validate retained key material")
+
+	checker.err = stderrors.New("key usage does not permit target algorithm")
+	_, err = retainedKeyMaterial(ctx, checker, source, source, stored)
+	requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
+	require.ErrorContains(t, err, "provider \"checker\" rejected retained material")
 }
+
+type bareRetainedBackend struct{}
+
+func (bareRetainedBackend) Name() string { return "bare" }
+func (bareRetainedBackend) Type() string { return "test" }
+func (bareRetainedBackend) GenerateKey(context.Context, *providerpb.GenerateKeyRequest) (*providerpb.GenerateKeyResponse, error) {
+	return nil, nil
+}
+func (bareRetainedBackend) DestroyKey(context.Context, *providerpb.DestroyKeyRequest) (*providerpb.DestroyKeyResponse, error) {
+	return nil, nil
+}
+func (bareRetainedBackend) ExportPublicKey(context.Context, *providerpb.ExportPublicKeyRequest) (*providerpb.ExportPublicKeyResponse, error) {
+	return nil, nil
+}
+
+type retainedKeyChecker struct {
+	bareRetainedBackend
+	calls    int
+	material *providerpb.GenerateKeyResponse
+	source   *types.AlgorithmDetails
+	target   *types.AlgorithmDetails
+	err      error
+}
+
+func (c *retainedKeyChecker) Name() string { return "checker" }
+func (c *retainedKeyChecker) ValidateRetainedKey(_ context.Context, material *providerpb.GenerateKeyResponse, source, target *types.AlgorithmDetails) error {
+	c.calls++
+	c.material = material
+	c.source = source
+	c.target = target
+	return c.err
+}
+
+var _ provider.KeyMaterialCompatibilityChecker = (*retainedKeyChecker)(nil)
 
 func retainedTemplate(id, family string, algorithm *types.AlgorithmDetails) *template.Template {
 	return template.NewTemplate(&types.TemplateInfo{
