@@ -38,7 +38,9 @@ type KeyOrchestrator interface {
 	// template. If multiple templates match, the one with the highest priority is used.
 	// (TODO: Definition of highest priority)
 	//
-	// Specifying a scope specification is currently not supported.
+	// Retaining material requires an explicit compatible template. In that mode
+	// the current provider and complete stored provider payload are preserved;
+	// otherwise the provider generates new material for the target template.
 	TransformKey(ctx context.Context, spec TransformKeySpec) (*KeyMetadata, error)
 }
 

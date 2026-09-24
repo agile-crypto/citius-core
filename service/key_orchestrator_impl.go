@@ -358,10 +358,43 @@ func validateTransformScope(ctx context.Context, keyPrimitive string, scopeSpec 
 	return nil
 }
 
+func validateTransformScopePresent(ctx context.Context, scopeSpec *core.ScopeSpecification) error {
+	const op = "service.validateTransformScopePresent"
+	if scopeSpec == nil || !scopeSpec.Scope.IsValid() {
+		return errors.New(ctx, op, errors.CodeInvalidArgument, "scope specification is required")
+	}
+	return nil
+}
+
+func retainedKeyMaterial(ctx context.Context, sourceTemplate, targetTemplate *template.Template, stored []byte) ([]byte, error) {
+	const op = "service.retainedKeyMaterial"
+	compatible, err := template.CompatibleKeyMaterial(sourceTemplate, targetTemplate)
+	if err != nil {
+		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"cannot retain material from template %q for template %q: %v",
+			sourceTemplate.TemplateID(), targetTemplate.TemplateID(), err)
+	}
+	if !compatible {
+		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"cannot retain material from template %q for incompatible template %q",
+			sourceTemplate.TemplateID(), targetTemplate.TemplateID())
+	}
+	var storedResponse providerpb.GenerateKeyResponse
+	if err = proto.Unmarshal(stored, &storedResponse); err != nil {
+		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"stored key payload for template %q is invalid: %v", sourceTemplate.TemplateID(), err)
+	}
+	return append([]byte(nil), stored...), nil
+}
+
 func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpec) (*KeyMetadata, error) {
 	const op = "service.(keyOrchestrator).TransformKey"
 	if spec.KeyName == "" {
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "key name is required")
+	}
+	if spec.RetainBytes && spec.TemplateID == "" {
+		return nil, errors.New(ctx, op, errors.CodeInvalidArgument,
+			"template ID is required when retaining key bytes")
 	}
 
 	// Retrieve the key and enforce its immutable primitive boundary before any
@@ -370,8 +403,13 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	if err = validateTransformScope(ctx, keyO.GetPrimitive(), spec.ScopeSpecification); err != nil {
+	if err = validateTransformScopePresent(ctx, spec.ScopeSpecification); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
+	}
+	if !spec.RetainBytes {
+		if err = validateTransformScope(ctx, keyO.GetPrimitive(), spec.ScopeSpecification); err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
 	}
 
 	lastVersion, err := r.keys.GetVersion(ctx, keyO.PublicId, keyO.CurrentVersion)
@@ -381,20 +419,28 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 
 	// Select or validate a template using the same scope and property filtering
 	// as CreateKey.
-	template, err := r.pickTemplate(ctx, keyO.PolicyId, spec.TemplateID, spec.ScopeSpecification)
+	targetTemplate, err := r.pickTemplate(ctx, keyO.PolicyId, spec.TemplateID, spec.ScopeSpecification)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	// TODO: Handle retain bytes option (requires ability to get get the key size for a template)
+
+	var retainedMaterial []byte
 	if spec.RetainBytes {
-		return nil, errors.New(ctx, op, errors.CodeNotImplemented, "transformation with retain bytes is not supported")
+		sourceTemplate, getErr := r.templates.Get(ctx, lastVersion.GetTemplateId())
+		if getErr != nil {
+			return nil, errors.Wrap(ctx, op, getErr)
+		}
+		retainedMaterial, err = retainedKeyMaterial(ctx, sourceTemplate, targetTemplate, lastVersion.GetKeyMaterial())
+		if err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
 	}
 
 	// TransformKey changes the algorithm while retaining custody. MigrateKey is
 	// responsible for moving a key between providers, so pin the current provider
 	// while validating its template support and requested security properties.
 	provider, err := r.providers.Match(ctx, provider.Requirements{
-		TemplateID:   template.TemplateID(),
+		TemplateID:   targetTemplate.TemplateID(),
 		ProviderName: lastVersion.GetProviderId(),
 		Security:     spec.ScopeSpecification.SecurityProps,
 	})
@@ -403,31 +449,33 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	}
 
 	// Validation (same as for key creation)
-	if err = r.validateTransformOp(ctx, keyO.GetName(), keyO.GetPolicyId(), spec.ScopeSpecification, provider, template, keyO.GetLabels()); err != nil {
+	if err = r.validateTransformOp(ctx, keyO.GetName(), keyO.GetPolicyId(), spec.ScopeSpecification, provider, targetTemplate, keyO.GetLabels()); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	// Generate new key material
-	genResp, err := generateAndValidateKey(ctx, op, provider, &providerpb.GenerateKeyRequest{
-		Algorithm: template.GetAlgorithm(),
-	})
-	if err != nil {
-		return nil, err
-	}
+	keyMaterial := retainedMaterial
+	if !spec.RetainBytes {
+		genResp, generateErr := generateAndValidateKey(ctx, op, provider, &providerpb.GenerateKeyRequest{
+			Algorithm: targetTemplate.GetAlgorithm(),
+		})
+		if generateErr != nil {
+			return nil, generateErr
+		}
 
-	// Marshal the full GenerateKeyResponse so that both KeyMaterial (private)
-	// and PublicKeyBytes are persisted.  The crypto orchestrator unmarshals to
-	// pick the right bytes per operation (Sign => private, Verify => public).
-	genRespBytes, err := proto.Marshal(genResp)
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
+		// Marshal the full GenerateKeyResponse so that both KeyMaterial (private)
+		// and PublicKeyBytes are persisted. The crypto orchestrator unmarshals to
+		// pick the right bytes per operation (Sign => private, Verify => public).
+		keyMaterial, err = proto.Marshal(genResp)
+		if err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
 	}
 
 	// Create new key version with the new material, same key ID, and incremented version number.
 	newVersionNumber := lastVersion.GetVersion() + 1
 	newVersionID := computeVersionID(keyO.GetPublicId(), newVersionNumber)
-	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), template.TemplateID(), provider.Name(), newVersionNumber,
-		genRespBytes, spec.ScopeSpecification, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
+	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), targetTemplate.TemplateID(), provider.Name(), newVersionNumber,
+		keyMaterial, spec.ScopeSpecification, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
