@@ -9,6 +9,7 @@ import (
 	"github.com/agile-crypto/citius-core/crypto"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/key"
+	"github.com/agile-crypto/citius-core/template"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,4 +53,48 @@ func TestValidateSignatureScopeParams(t *testing.T) {
 			requireCoreErrorCode(t, err, errors.CodeInvalidArgument)
 		})
 	}
+}
+
+func TestValidateSignatureRequest_requiresCatalogOperation(t *testing.T) {
+	ctx := context.Background()
+	noContext := crypto.SignatureScopeFields{NoContext: &types.NoParams{}}
+	capability := func(scope types.SignatureScope, ops ...types.CryptoOperation) *types.ScopedCapabilities {
+		return &types.ScopedCapabilities{
+			Scope: &types.ScopeSpecification{ScopeSpec: &types.ScopeSpecification_Signature{
+				Signature: &types.SignatureScopeSpec{Scope: scope},
+			}},
+			Operations: ops,
+		}
+	}
+	prehashed := template.NewTemplate(&types.TemplateInfo{
+		TemplateId: "prehashed",
+		ScopedCapabilities: []*types.ScopedCapabilities{capability(types.SignatureScope_SIGNATURE_SCOPE_PREHASHED,
+			types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_VERIFY)},
+	})
+	signOnly := template.NewTemplate(&types.TemplateInfo{
+		TemplateId: "sign-only",
+		ScopedCapabilities: []*types.ScopedCapabilities{capability(types.SignatureScope_SIGNATURE_SCOPE_STANDARD,
+			types.CryptoOperation_CRYPTO_OPERATION_SIGN)},
+	})
+	versionWithScope := func(scope core.Scope) *key.Version {
+		kv, err := key.NewVersion(ctx, "key:1", "key", "tmpl", "provider", 1, []byte("material"),
+			&core.ScopeSpecification{Scope: scope})
+		require.NoError(t, err)
+		return kv
+	}
+
+	require.NoError(t, validateSignatureRequest(ctx, "test", versionWithScope(core.ScopeSignaturePrehashed),
+		prehashed, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, noContext))
+	require.NoError(t, validateSignatureRequest(ctx, "test", versionWithScope(core.ScopeSignatureStandard),
+		signOnly, types.CryptoOperation_CRYPTO_OPERATION_SIGN, noContext))
+
+	// Scope fields match the key scope, but the catalog does not list Verify.
+	err := validateSignatureRequest(ctx, "test", versionWithScope(core.ScopeSignatureStandard),
+		signOnly, types.CryptoOperation_CRYPTO_OPERATION_VERIFY, noContext)
+	requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
+
+	// Digest operation on a standard-scoped key is rejected by the scope rule first.
+	err = validateSignatureRequest(ctx, "test", versionWithScope(core.ScopeSignatureStandard),
+		signOnly, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, noContext)
+	requireCoreErrorCode(t, err, errors.CodeInvalidArgument)
 }

@@ -314,3 +314,39 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 		})
 	}
 }
+
+func TestSupportsOperation(t *testing.T) {
+	ctx := context.Background()
+	tmpl := template.NewTemplate(&api.TemplateInfo{
+		ScopedCapabilities: []*api.ScopedCapabilities{
+			{
+				Scope: &api.ScopeSpecification{ScopeSpec: &api.ScopeSpecification_Signature{
+					Signature: &api.SignatureScopeSpec{Scope: api.SignatureScope_SIGNATURE_SCOPE_STANDARD},
+				}},
+				Operations: []api.CryptoOperation{api.CryptoOperation_CRYPTO_OPERATION_SIGN},
+			},
+			{
+				Scope: &api.ScopeSpecification{ScopeSpec: &api.ScopeSpecification_Signature{
+					Signature: &api.SignatureScopeSpec{Scope: api.SignatureScope_SIGNATURE_SCOPE_PREHASHED},
+				}},
+				Operations: []api.CryptoOperation{api.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN},
+			},
+		},
+	})
+	tests := []struct {
+		scope     core.Scope
+		operation api.CryptoOperation
+		want      bool
+	}{
+		{core.ScopeSignatureStandard, api.CryptoOperation_CRYPTO_OPERATION_SIGN, true},
+		{core.ScopeSignatureStandard, api.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, false},
+		{core.ScopeSignaturePrehashed, api.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, true},
+		{core.ScopeSignaturePrehashed, api.CryptoOperation_CRYPTO_OPERATION_SIGN, false},
+		{core.ScopeSignatureWithContext, api.CryptoOperation_CRYPTO_OPERATION_SIGN, false},
+	}
+	for _, tt := range tests {
+		got, err := template.SupportsOperation(ctx, tmpl, tt.scope, tt.operation)
+		require.NoError(t, err)
+		require.Equal(t, tt.want, got, "%s/%s", tt.scope, tt.operation)
+	}
+}

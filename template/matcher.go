@@ -62,6 +62,32 @@ func MatchesScope(ctx context.Context, tmpl *Template, want *core.ScopeSpecifica
 	return false, nil
 }
 
+// SupportsOperation reports whether tmpl declares operation for scope in its
+// ScopedCapabilities. The catalog is the source of truth for which operations
+// a (template, scope) pair permits: for example, the standard catalog lists
+// DIGEST_SIGN/DIGEST_VERIFY only on prehashed signature scopes.
+func SupportsOperation(ctx context.Context, tmpl *Template, scope core.Scope, operation types.CryptoOperation) (bool, error) {
+	const op = "template.SupportsOperation"
+	for _, sc := range tmpl.GetScopedCapabilities() {
+		if sc.GetScope() == nil {
+			continue
+		}
+		templateSpec, err := core.ScopeSpecificationFromProto(ctx, sc.GetScope())
+		if err != nil {
+			return false, errors.Wrap(ctx, op, err, errors.WithMessage("failed to read template's scope specification"))
+		}
+		if templateSpec.Scope != scope {
+			continue
+		}
+		for _, declared := range sc.GetOperations() {
+			if declared == operation {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 // securityPropertiesMatch checks whether template-side security properties (got)
 // satisfy the caller-side security filter (want).
 //

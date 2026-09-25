@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/crypto"
 	"github.com/agile-crypto/citius-core/errors"
@@ -152,7 +153,7 @@ func (o *cryptoOrchestrator) Sign(ctx context.Context, req crypto.SignRequest) (
 	}
 
 	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeMessage, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_SIGN, req.SignatureScopeFields); err != nil {
 		return crypto.SignResult{}, err
 	}
 
@@ -259,7 +260,7 @@ func (o *cryptoOrchestrator) Verify(ctx context.Context, req crypto.VerifyReques
 	}
 
 	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeMessage, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_VERIFY, req.SignatureScopeFields); err != nil {
 		return crypto.VerifyResult{}, err
 	}
 
@@ -385,7 +386,7 @@ func (o *cryptoOrchestrator) DigestSign(ctx context.Context, req crypto.DigestSi
 	}
 
 	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeDigest, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, req.SignatureScopeFields); err != nil {
 		return crypto.SignResult{}, err
 	}
 
@@ -498,7 +499,7 @@ func (o *cryptoOrchestrator) DigestVerify(ctx context.Context, req crypto.Digest
 	}
 
 	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeDigest, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_VERIFY, req.SignatureScopeFields); err != nil {
 		return crypto.VerifyResult{}, err
 	}
 
@@ -846,6 +847,43 @@ const (
 	signatureModeMessage signatureMode = iota
 	signatureModeDigest
 )
+
+// validateSignatureRequest checks a signature-family request against the
+// selected key version: the caller's scope fields must match the version's
+// scope (see validateSignatureScopeParams), and the version's template must
+// declare operation for that scope in its catalog ScopedCapabilities.
+func validateSignatureRequest(
+	ctx context.Context,
+	op errors.Op,
+	kv *key.Version,
+	tmpl *template.Template,
+	operation types.CryptoOperation,
+	sf crypto.SignatureScopeFields,
+) error {
+	mode := signatureModeMessage
+	if operation == types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN ||
+		operation == types.CryptoOperation_CRYPTO_OPERATION_DIGEST_VERIFY {
+		mode = signatureModeDigest
+	}
+	if err := validateSignatureScopeParams(ctx, op, kv, mode, sf); err != nil {
+		return err
+	}
+
+	keyScopeSpec := &core.ScopeSpecification{}
+	if err := keyScopeSpec.Deserialize(ctx, kv.GetScopeSpecification()); err != nil {
+		return errors.Wrap(ctx, op, err)
+	}
+	supported, err := template.SupportsOperation(ctx, tmpl, keyScopeSpec.Scope, operation)
+	if err != nil {
+		return errors.Wrap(ctx, op, err)
+	}
+	if !supported {
+		return errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"template %q does not declare %s for scope %q",
+			tmpl.TemplateID(), operation, keyScopeSpec.Scope)
+	}
+	return nil
+}
 
 // validateSignatureScopeParams validates that the caller's scope_params
 // are compatible with the selected key version's declared ScopeSpecification.
