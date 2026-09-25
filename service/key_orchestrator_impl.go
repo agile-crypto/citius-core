@@ -366,6 +366,17 @@ func validateTransformScopePresent(ctx context.Context, scopeSpec *core.ScopeSpe
 	return nil
 }
 
+// validateTransformRequestScope requires a scope and, when regenerating key
+// material, enforces the key's immutable primitive. Retain mode relies on
+// key-material compatibility instead, which permits approved cross-primitive
+// transitions such as AES-GCM to AES-CBC.
+func validateTransformRequestScope(ctx context.Context, spec TransformKeySpec, keyPrimitive string) error {
+	if spec.RetainBytes {
+		return validateTransformScopePresent(ctx, spec.ScopeSpecification)
+	}
+	return validateTransformScope(ctx, keyPrimitive, spec.ScopeSpecification)
+}
+
 func retainedKeyMaterial(ctx context.Context, sourceTemplate, targetTemplate *template.Template, stored []byte) ([]byte, error) {
 	const op = "service.retainedKeyMaterial"
 	compatible, err := template.CompatibleKeyMaterial(sourceTemplate, targetTemplate)
@@ -403,13 +414,8 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	if err = validateTransformScopePresent(ctx, spec.ScopeSpecification); err != nil {
+	if err = validateTransformRequestScope(ctx, spec, keyO.GetPrimitive()); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
-	}
-	if !spec.RetainBytes {
-		if err = validateTransformScope(ctx, keyO.GetPrimitive(), spec.ScopeSpecification); err != nil {
-			return nil, errors.Wrap(ctx, op, err)
-		}
 	}
 
 	lastVersion, err := r.keys.GetVersion(ctx, keyO.PublicId, keyO.CurrentVersion)
@@ -424,25 +430,6 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	var sourceTemplate *template.Template
-	if spec.RetainBytes {
-		sourceTemplate, err = r.templates.Get(ctx, lastVersion.GetTemplateId())
-		if err != nil {
-			return nil, errors.Wrap(ctx, op, err)
-		}
-		compatible, compatibilityErr := template.CompatibleKeyMaterial(sourceTemplate, targetTemplate)
-		if compatibilityErr != nil {
-			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
-				"cannot retain material from template %q for template %q: %v",
-				sourceTemplate.TemplateID(), targetTemplate.TemplateID(), compatibilityErr)
-		}
-		if !compatible {
-			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
-				"cannot retain material from template %q for incompatible template %q",
-				sourceTemplate.TemplateID(), targetTemplate.TemplateID())
-		}
-	}
-
 	// TransformKey changes the algorithm while retaining custody. MigrateKey is
 	// responsible for moving a key between providers, so pin the current provider
 	// while validating its template support and requested security properties.
@@ -455,40 +442,14 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	var retainedMaterial []byte
-	if spec.RetainBytes {
-		// TODO: Opaque or usage-restricted providers (for example HSMs with
-		// immutable mechanism attributes) may need an optional provider-specific
-		// retained-material validation capability. Provider matching already
-		// proves that this provider advertises the target template; software and
-		// OpenSSL material is additionally checked when the target operation parses it.
-		retainedMaterial, err = retainedKeyMaterial(ctx, sourceTemplate, targetTemplate, lastVersion.GetKeyMaterial())
-		if err != nil {
-			return nil, errors.Wrap(ctx, op, err)
-		}
-	}
-
 	// Validation (same as for key creation)
 	if err = r.validateTransformOp(ctx, keyO.GetName(), keyO.GetPolicyId(), spec.ScopeSpecification, provider, targetTemplate, keyO.GetLabels()); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	keyMaterial := retainedMaterial
-	if !spec.RetainBytes {
-		genResp, generateErr := generateAndValidateKey(ctx, op, provider, &providerpb.GenerateKeyRequest{
-			Algorithm: targetTemplate.GetAlgorithm(),
-		})
-		if generateErr != nil {
-			return nil, generateErr
-		}
-
-		// Marshal the full GenerateKeyResponse so that both KeyMaterial (private)
-		// and PublicKeyBytes are persisted. The crypto orchestrator unmarshals to
-		// pick the right bytes per operation (Sign => private, Verify => public).
-		keyMaterial, err = proto.Marshal(genResp)
-		if err != nil {
-			return nil, errors.Wrap(ctx, op, err)
-		}
+	keyMaterial, err := r.transformKeyMaterial(ctx, spec.RetainBytes, lastVersion, targetTemplate, provider)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
 	}
 
 	// Create new key version with the new material, same key ID, and incremented version number.
@@ -512,6 +473,52 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	return metadata, nil
+}
+
+// transformKeyMaterial returns the stored payload for the new key version:
+// a byte-for-byte copy of the current payload when retaining key bytes, or
+// freshly generated material otherwise. prov has already been matched for
+// target, so retain mode never calls GenerateKey.
+func (r *keyOrchestrator) transformKeyMaterial(ctx context.Context, retain bool, lastVersion *key.Version, target *template.Template, prov provider.Backend) ([]byte, error) {
+	const op = "service.(keyOrchestrator).transformKeyMaterial"
+	if !retain {
+		return generateKeyMaterial(ctx, op, prov, target)
+	}
+	// TODO: Opaque or usage-restricted providers (for example HSMs with
+	// immutable mechanism attributes) may need an optional provider-specific
+	// retained-material validation capability. Provider matching already
+	// proves that this provider advertises the target template; software and
+	// OpenSSL material is additionally checked when the target operation parses it.
+	return r.retainMaterial(ctx, lastVersion, target)
+}
+
+// retainMaterial loads the source template of lastVersion and returns a copy
+// of its stored payload if the key material is compatible with target.
+func (r *keyOrchestrator) retainMaterial(ctx context.Context, lastVersion *key.Version, target *template.Template) ([]byte, error) {
+	const op = "service.(keyOrchestrator).retainMaterial"
+	source, err := r.templates.Get(ctx, lastVersion.GetTemplateId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return retainedKeyMaterial(ctx, source, target, lastVersion.GetKeyMaterial())
+}
+
+// generateKeyMaterial generates fresh material for tmpl and marshals the full
+// GenerateKeyResponse so that both KeyMaterial (private) and PublicKeyBytes
+// are persisted. The crypto orchestrator unmarshals to pick the right bytes
+// per operation (Sign => private, Verify => public).
+func generateKeyMaterial(ctx context.Context, op errors.Op, prov provider.Backend, tmpl *template.Template) ([]byte, error) {
+	genResp, err := generateAndValidateKey(ctx, op, prov, &providerpb.GenerateKeyRequest{
+		Algorithm: tmpl.GetAlgorithm(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	material, err := proto.Marshal(genResp)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return material, nil
 }
 
 // generateAndValidateKey calls the provider's GenerateKey and enforces the
