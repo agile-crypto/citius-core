@@ -67,112 +67,118 @@ func CompatibleKeyMaterial(source, target *Template) (bool, error) {
 	return sourceProfile == targetProfile, nil
 }
 
+// shapeResolver derives a key shape for the algorithm arms it recognizes;
+// handled is false for arms owned by another resolver.
+type shapeResolver func(algorithm any) (family, shape string, handled bool, err error)
+
+var shapeResolvers = []shapeResolver{asymmetricShape, symmetricShape, agreementShape}
+
 func typedKeyMaterialShape(details *api.AlgorithmDetails) (family, shape string, err error) {
-	switch algorithm := details.GetAlgorithm().(type) {
-	case *api.AlgorithmDetails_Ecdsa:
-		if algorithm.Ecdsa == nil || algorithm.Ecdsa.GetCurve() == api.EllipticCurve_ELLIPTIC_CURVE_UNSPECIFIED {
-			return "", "", fmt.Errorf("ECDSA curve is required")
+	algorithm := details.GetAlgorithm()
+	for _, resolve := range shapeResolvers {
+		if family, shape, handled, err := resolve(algorithm); handled {
+			return family, shape, err
 		}
-		return "ECDSA", enumShape("curve", algorithm.Ecdsa.GetCurve()), nil
-	case *api.AlgorithmDetails_Ed25519:
-		if algorithm.Ed25519 == nil {
-			return "", "", fmt.Errorf("Ed25519 parameters are required")
-		}
-		return "Ed25519", "fixed", nil
-	case *api.AlgorithmDetails_Ed448:
-		if algorithm.Ed448 == nil {
-			return "", "", fmt.Errorf("Ed448 parameters are required")
-		}
-		return "Ed448", "fixed", nil
-	case *api.AlgorithmDetails_RsaPss:
-		if algorithm.RsaPss == nil {
-			return "", "", fmt.Errorf("RSA-PSS parameters are required")
-		}
-		return sizedShape("RSA", "modulus-bits", algorithm.RsaPss.GetKeySizeBits())
-	case *api.AlgorithmDetails_RsaPkcs1V15:
-		if algorithm.RsaPkcs1V15 == nil {
-			return "", "", fmt.Errorf("RSA-PKCS1-v1.5 parameters are required")
-		}
-		return sizedShape("RSA", "modulus-bits", algorithm.RsaPkcs1V15.GetKeySizeBits())
-	case *api.AlgorithmDetails_RsaOaep:
-		if algorithm.RsaOaep == nil {
-			return "", "", fmt.Errorf("RSA-OAEP parameters are required")
-		}
-		return sizedShape("RSA", "modulus-bits", algorithm.RsaOaep.GetKeySizeBits())
-	case *api.AlgorithmDetails_MlDsa:
-		if algorithm.MlDsa == nil || algorithm.MlDsa.GetParameterSet() == api.MlDsaParameterSet_ML_DSA_PARAMETER_SET_UNSPECIFIED {
-			return "", "", fmt.Errorf("ML-DSA parameter set is required")
-		}
-		return "ML-DSA", enumShape("parameter-set", algorithm.MlDsa.GetParameterSet()), nil
-	case *api.AlgorithmDetails_SlhDsa:
-		if algorithm.SlhDsa == nil || algorithm.SlhDsa.GetHashType() == api.SlhDsaHashType_SLH_DSA_HASH_TYPE_UNSPECIFIED || algorithm.SlhDsa.GetParameterSet() == api.SlhDsaParameterSet_SLH_DSA_PARAMETER_SET_UNSPECIFIED {
-			return "", "", fmt.Errorf("SLH-DSA hash type and parameter set are required")
-		}
-		return "SLH-DSA", fmt.Sprintf("hash-type:%d/parameter-set:%d", algorithm.SlhDsa.GetHashType(), algorithm.SlhDsa.GetParameterSet()), nil
-	case *api.AlgorithmDetails_MlKem:
-		if algorithm.MlKem == nil || algorithm.MlKem.GetParameterSet() == api.MlKemParameterSet_ML_KEM_PARAMETER_SET_UNSPECIFIED {
-			return "", "", fmt.Errorf("ML-KEM parameter set is required")
-		}
-		return "ML-KEM", enumShape("parameter-set", algorithm.MlKem.GetParameterSet()), nil
-	case *api.AlgorithmDetails_AesGcm:
-		if algorithm.AesGcm == nil {
-			return "", "", fmt.Errorf("AES-GCM parameters are required")
-		}
-		return sizedShape("AES", "key-bits", algorithm.AesGcm.GetKeySizeBits())
-	case *api.AlgorithmDetails_AesCbc:
-		if algorithm.AesCbc == nil {
-			return "", "", fmt.Errorf("AES-CBC parameters are required")
-		}
-		return sizedShape("AES", "key-bits", algorithm.AesCbc.GetKeySizeBits())
-	case *api.AlgorithmDetails_AesCtr:
-		if algorithm.AesCtr == nil {
-			return "", "", fmt.Errorf("AES-CTR parameters are required")
-		}
-		return sizedShape("AES", "key-bits", algorithm.AesCtr.GetKeySizeBits())
-	case *api.AlgorithmDetails_AesCcm:
-		if algorithm.AesCcm == nil {
-			return "", "", fmt.Errorf("AES-CCM parameters are required")
-		}
-		return sizedShape("AES", "key-bits", algorithm.AesCcm.GetKeySizeBits())
-	case *api.AlgorithmDetails_AesKeyWrap:
-		if algorithm.AesKeyWrap == nil {
-			return "", "", fmt.Errorf("AES key-wrap parameters are required")
-		}
-		return sizedShape("AES", "key-bits", algorithm.AesKeyWrap.GetKeySizeBits())
-	case *api.AlgorithmDetails_AesXts:
-		if algorithm.AesXts == nil {
-			return "", "", fmt.Errorf("AES-XTS parameters are required")
-		}
-		return sizedShape("AES-XTS", "total-key-bits", algorithm.AesXts.GetKeySizeBits())
-	case *api.AlgorithmDetails_Chacha20Poly1305:
-		if algorithm.Chacha20Poly1305 == nil {
-			return "", "", fmt.Errorf("ChaCha20-Poly1305 parameters are required")
-		}
-		return "ChaCha20", "fixed", nil
-	case *api.AlgorithmDetails_Ecdh:
-		if algorithm.Ecdh == nil || algorithm.Ecdh.GetCurve() == api.EllipticCurve_ELLIPTIC_CURVE_UNSPECIFIED {
-			return "", "", fmt.Errorf("ECDH curve is required")
-		}
-		return "ECDH", enumShape("curve", algorithm.Ecdh.GetCurve()), nil
-	case *api.AlgorithmDetails_X25519:
-		if algorithm.X25519 == nil {
-			return "", "", fmt.Errorf("X25519 parameters are required")
-		}
-		return "X25519", "fixed", nil
-	case *api.AlgorithmDetails_X448:
-		if algorithm.X448 == nil {
-			return "", "", fmt.Errorf("X448 parameters are required")
-		}
-		return "X448", "fixed", nil
-	case *api.AlgorithmDetails_Hmac:
-		return "", "", fmt.Errorf("HMAC is unsupported: typed API has no key-material size constraint")
-	case *api.AlgorithmDetails_Custom:
-		return "", "", fmt.Errorf("custom algorithms are unsupported for retained key material")
-	case *api.AlgorithmDetails_Hybrid:
-		return "", "", fmt.Errorf("hybrid algorithms are unsupported for retained key material")
-	default:
-		return "", "", fmt.Errorf("typed algorithm %T is unsupported for retained key material", algorithm)
 	}
+	return "", "", unsupportedShape(algorithm)
+}
+
+func handledShape(family, shape string, err error) (string, string, bool, error) {
+	return family, shape, true, err
+}
+
+func asymmetricShape(a any) (string, string, bool, error) {
+	switch algorithm := a.(type) {
+	case *api.AlgorithmDetails_Ecdsa:
+		return handledShape(enumShape("ECDSA", "curve", "curve", algorithm.Ecdsa.GetCurve(), api.EllipticCurve_ELLIPTIC_CURVE_UNSPECIFIED))
+	case *api.AlgorithmDetails_Ed25519:
+		return handledShape(fixedShape("Ed25519", "Ed25519", algorithm.Ed25519 != nil))
+	case *api.AlgorithmDetails_Ed448:
+		return handledShape(fixedShape("Ed448", "Ed448", algorithm.Ed448 != nil))
+	case *api.AlgorithmDetails_RsaPss:
+		return handledShape(paramsSizedShape("RSA-PSS", algorithm.RsaPss != nil, "RSA", "modulus-bits", algorithm.RsaPss.GetKeySizeBits()))
+	case *api.AlgorithmDetails_RsaPkcs1V15:
+		return handledShape(paramsSizedShape("RSA-PKCS1-v1.5", algorithm.RsaPkcs1V15 != nil, "RSA", "modulus-bits", algorithm.RsaPkcs1V15.GetKeySizeBits()))
+	case *api.AlgorithmDetails_RsaOaep:
+		return handledShape(paramsSizedShape("RSA-OAEP", algorithm.RsaOaep != nil, "RSA", "modulus-bits", algorithm.RsaOaep.GetKeySizeBits()))
+	case *api.AlgorithmDetails_MlDsa:
+		return handledShape(enumShape("ML-DSA", "parameter-set", "parameter set", algorithm.MlDsa.GetParameterSet(), api.MlDsaParameterSet_ML_DSA_PARAMETER_SET_UNSPECIFIED))
+	case *api.AlgorithmDetails_SlhDsa:
+		return handledShape(slhDsaShape(algorithm.SlhDsa))
+	case *api.AlgorithmDetails_MlKem:
+		return handledShape(enumShape("ML-KEM", "parameter-set", "parameter set", algorithm.MlKem.GetParameterSet(), api.MlKemParameterSet_ML_KEM_PARAMETER_SET_UNSPECIFIED))
+	}
+	return "", "", false, nil
+}
+
+func symmetricShape(a any) (string, string, bool, error) {
+	switch algorithm := a.(type) {
+	case *api.AlgorithmDetails_AesGcm:
+		return handledShape(paramsSizedShape("AES-GCM", algorithm.AesGcm != nil, "AES", "key-bits", algorithm.AesGcm.GetKeySizeBits()))
+	case *api.AlgorithmDetails_AesCbc:
+		return handledShape(paramsSizedShape("AES-CBC", algorithm.AesCbc != nil, "AES", "key-bits", algorithm.AesCbc.GetKeySizeBits()))
+	case *api.AlgorithmDetails_AesCtr:
+		return handledShape(paramsSizedShape("AES-CTR", algorithm.AesCtr != nil, "AES", "key-bits", algorithm.AesCtr.GetKeySizeBits()))
+	case *api.AlgorithmDetails_AesCcm:
+		return handledShape(paramsSizedShape("AES-CCM", algorithm.AesCcm != nil, "AES", "key-bits", algorithm.AesCcm.GetKeySizeBits()))
+	case *api.AlgorithmDetails_AesKeyWrap:
+		return handledShape(paramsSizedShape("AES key-wrap", algorithm.AesKeyWrap != nil, "AES", "key-bits", algorithm.AesKeyWrap.GetKeySizeBits()))
+	case *api.AlgorithmDetails_AesXts:
+		return handledShape(paramsSizedShape("AES-XTS", algorithm.AesXts != nil, "AES-XTS", "total-key-bits", algorithm.AesXts.GetKeySizeBits()))
+	case *api.AlgorithmDetails_Chacha20Poly1305:
+		return handledShape(fixedShape("ChaCha20-Poly1305", "ChaCha20", algorithm.Chacha20Poly1305 != nil))
+	}
+	return "", "", false, nil
+}
+
+func agreementShape(a any) (string, string, bool, error) {
+	switch algorithm := a.(type) {
+	case *api.AlgorithmDetails_Ecdh:
+		return handledShape(enumShape("ECDH", "curve", "curve", algorithm.Ecdh.GetCurve(), api.EllipticCurve_ELLIPTIC_CURVE_UNSPECIFIED))
+	case *api.AlgorithmDetails_X25519:
+		return handledShape(fixedShape("X25519", "X25519", algorithm.X25519 != nil))
+	case *api.AlgorithmDetails_X448:
+		return handledShape(fixedShape("X448", "X448", algorithm.X448 != nil))
+	}
+	return "", "", false, nil
+}
+
+func unsupportedShape(algorithm any) error {
+	switch algorithm.(type) {
+	case *api.AlgorithmDetails_Hmac:
+		return fmt.Errorf("HMAC is unsupported: typed API has no key-material size constraint")
+	case *api.AlgorithmDetails_Custom:
+		return fmt.Errorf("custom algorithms are unsupported for retained key material")
+	case *api.AlgorithmDetails_Hybrid:
+		return fmt.Errorf("hybrid algorithms are unsupported for retained key material")
+	default:
+		return fmt.Errorf("typed algorithm %T is unsupported for retained key material", algorithm)
+	}
+}
+
+// fixedShape describes families whose key shape is fully determined by the
+// algorithm; present reports whether the typed parameters were supplied.
+func fixedShape(name, family string, present bool) (string, string, error) {
+	if !present {
+		return "", "", fmt.Errorf("%s parameters are required", name)
+	}
+	return family, "fixed", nil
+}
+
+// paramsSizedShape requires typed parameters and a non-zero key size.
+func paramsSizedShape(name string, present bool, family, label string, size uint32) (string, string, error) {
+	if !present {
+		return "", "", fmt.Errorf("%s parameters are required", name)
+	}
+	return sizedShape(family, label, size)
+}
+
+func slhDsaShape(params *api.SlhDsaParams) (string, string, error) {
+	if params.GetHashType() == api.SlhDsaHashType_SLH_DSA_HASH_TYPE_UNSPECIFIED ||
+		params.GetParameterSet() == api.SlhDsaParameterSet_SLH_DSA_PARAMETER_SET_UNSPECIFIED {
+		return "", "", fmt.Errorf("SLH-DSA hash type and parameter set are required")
+	}
+	return "SLH-DSA", fmt.Sprintf("hash-type:%d/parameter-set:%d", params.GetHashType(), params.GetParameterSet()), nil
 }
 
 func sizedShape(family, label string, size uint32) (string, string, error) {
@@ -182,6 +188,11 @@ func sizedShape(family, label string, size uint32) (string, string, error) {
 	return family, fmt.Sprintf("%s:%d", label, size), nil
 }
 
-func enumShape[T ~int32](label string, value T) string {
-	return fmt.Sprintf("%s:%d", label, value)
+// enumShape requires a specified enum value; nil parameters yield the
+// unspecified value through the generated getter and are rejected.
+func enumShape[T ~int32](family, label, description string, value, unspecified T) (string, string, error) {
+	if value == unspecified {
+		return "", "", fmt.Errorf("%s %s is required", family, description)
+	}
+	return family, fmt.Sprintf("%s:%d", label, value), nil
 }
