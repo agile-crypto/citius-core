@@ -152,7 +152,7 @@ func (o *cryptoOrchestrator) Sign(ctx context.Context, req crypto.SignRequest) (
 	}
 
 	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeMessage, req.SignatureScopeFields); err != nil {
 		return crypto.SignResult{}, err
 	}
 
@@ -259,7 +259,7 @@ func (o *cryptoOrchestrator) Verify(ctx context.Context, req crypto.VerifyReques
 	}
 
 	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeMessage, req.SignatureScopeFields); err != nil {
 		return crypto.VerifyResult{}, err
 	}
 
@@ -385,7 +385,7 @@ func (o *cryptoOrchestrator) DigestSign(ctx context.Context, req crypto.DigestSi
 	}
 
 	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeDigest, req.SignatureScopeFields); err != nil {
 		return crypto.SignResult{}, err
 	}
 
@@ -498,7 +498,7 @@ func (o *cryptoOrchestrator) DigestVerify(ctx context.Context, req crypto.Digest
 	}
 
 	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureScopeParams(ctx, op, kv, req.SignatureScopeFields); err != nil {
+	if err = validateSignatureScopeParams(ctx, op, kv, signatureModeDigest, req.SignatureScopeFields); err != nil {
 		return crypto.VerifyResult{}, err
 	}
 
@@ -836,14 +836,26 @@ func (o *cryptoOrchestrator) GenerateRandom(ctx context.Context, _ int) ([]byte,
 // Scope-param validation helpers
 // ---------------------------------------------------------------------------
 
+// signatureMode distinguishes full-message signing (Sign/Verify) from
+// pre-computed-digest signing (DigestSign/DigestVerify). The standard
+// catalog declares digest operations only on prehashed scopes, so the same
+// caller scope field maps to a different key scope per mode.
+type signatureMode int
+
+const (
+	signatureModeMessage signatureMode = iota
+	signatureModeDigest
+)
+
 // validateSignatureScopeParams validates that the caller's scope_params
 // are compatible with the selected key version's declared ScopeSpecification.
 //
 // The orchestrator handles:
 //  1. Vendor short-circuit (vendor context bypasses standard scope matching)
-//  2. Proto oneof arm → core.Scope mapping
-//  3. Delegating semantic validation to core.ValidateSignatureScope
-//  4. Wrapping core errors with ctx/op/code
+//  2. Proto oneof arm + signature mode → core.Scope mapping:
+//     message: NoContext → Standard,  DomainContext → WithContext
+//     digest:  NoContext → Prehashed, DomainContext → PrehashedWithContext
+//  3. Requiring the key version's scope to equal the mapped scope
 //
 // The proto oneof at the API boundary guarantees at-most-one variant.
 // If none is set, callerScope maps to "" and core rejects it.
@@ -851,6 +863,7 @@ func validateSignatureScopeParams(
 	ctx context.Context,
 	op errors.Op,
 	kv *key.Version,
+	mode signatureMode,
 	sf crypto.SignatureScopeFields,
 ) error {
 	// 1. Vendor context bypasses standard scope matching.
@@ -858,13 +871,15 @@ func validateSignatureScopeParams(
 		return nil
 	}
 
-	// 2. Map proto oneof arm => core.Scope.
-	//    If no arm is set (all nil), callerScope is "",
-	//    which core.ValidateSignatureScope rejects.
+	// 2. Map proto oneof arm + mode => core.Scope.
 	var callerScope core.Scope
 	switch {
+	case sf.NoContext != nil && mode == signatureModeDigest:
+		callerScope = core.ScopeSignaturePrehashed
 	case sf.NoContext != nil:
 		callerScope = core.ScopeSignatureStandard
+	case sf.DomainContext != nil && mode == signatureModeDigest:
+		callerScope = core.ScopeSignaturePrehashedWithContext
 	case sf.DomainContext != nil:
 		callerScope = core.ScopeSignatureWithContext
 	default:
