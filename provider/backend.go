@@ -63,20 +63,6 @@ type Backend interface {
 	ExportPublicKey(ctx context.Context, req *providerpb.ExportPublicKeyRequest) (*providerpb.ExportPublicKeyResponse, error)
 }
 
-// KeyMaterialCompatibilityChecker is implemented by providers that can
-// authoritatively validate whether stored key material can be reused under a
-// target algorithm. Retained transforms require this capability because core
-// treats provider-produced material as opaque and cannot validate encodings,
-// key shape, or provider-specific usage restrictions itself.
-type KeyMaterialCompatibilityChecker interface {
-	ValidateRetainedKey(
-		ctx context.Context,
-		material *providerpb.GenerateKeyResponse,
-		source *types.AlgorithmDetails,
-		target *types.AlgorithmDetails,
-	) error
-}
-
 // Signer is an optional interface for providers that support signature
 // operations (CryptoService.Sign / Verify / SignDigest / VerifyDigest).
 //
