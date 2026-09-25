@@ -63,6 +63,11 @@ type Backend interface {
 	ExportPublicKey(ctx context.Context, req *providerpb.ExportPublicKeyRequest) (*providerpb.ExportPublicKeyResponse, error)
 }
 
+// TODO: Add an optional retained-key validation capability for providers with
+// opaque handles or immutable usage/mechanism restrictions. Ordinary provider
+// matching already proves target-template support; restricted providers may
+// additionally need to approve a specific stored key for the target algorithm.
+
 // Signer is an optional interface for providers that support signature
 // operations (CryptoService.Sign / Verify / SignDigest / VerifyDigest).
 //
