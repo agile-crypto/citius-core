@@ -198,6 +198,18 @@ func computeIfNotNil[T PrimitiveSpecificProperties, V any](p PrimitiveSpecificPr
 	return nil
 }
 
+// trueOrNil is computeIfNotNil for a boolean property whose false value means
+// "not required": it returns nil unless f(p) is true. A false property is left
+// unset rather than recorded as false, so a spec that only carries other
+// properties (such as accepted digest hashes) does not claim false for a
+// property the template may well have.
+func trueOrNil[T PrimitiveSpecificProperties](p PrimitiveSpecificProperties, f func(T) bool) *bool {
+	if v := computeIfNotNil(p, f); v != nil && *v {
+		return v
+	}
+	return nil
+}
+
 // Helper to build a protobuf [types.ScopeSpecification] from a scope and a list of options.
 func (s *ScopeSpecification) ToProto(ctx context.Context) (*types.ScopeSpecification, error) {
 	const op = "core.ScopeSpecification.ToProto"
@@ -302,8 +314,8 @@ func (s *ScopeSpecification) ToProto(ctx context.Context) (*types.ScopeSpecifica
 					Scope:                s.Scope.ToProto().(types.SignatureScope),
 					Security:             s.SecurityProps.ToProto(),
 					AdditionalProperties: s.AdditionalProps,
-					NonMalleable:         computeIfNotNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.NonMalleable }),
-					Deterministic:        computeIfNotNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.Deterministic }),
+					NonMalleable:         trueOrNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.NonMalleable }),
+					Deterministic:        trueOrNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.Deterministic }),
 					AcceptedDigestHashes: append([]types.HashAlgorithm(nil), s.AcceptedDigestHashes()...),
 				},
 			},

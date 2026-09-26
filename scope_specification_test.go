@@ -145,6 +145,29 @@ func TestScopeSpecification_AcceptedDigestHashesRoundTrip(t *testing.T) {
 	require.False(t, ScopeSignatureWithContext.IsPrehashed())
 }
 
+// A spec that carries only digest hashes must not claim deterministic=false or
+// non_malleable=false: reading a key would then contradict its template
+// (e.g. ed25519ph is both). False properties stay unset; true ones are kept.
+func TestScopeSpecification_ToProtoLeavesFalseSignaturePropertiesUnset(t *testing.T) {
+	ctx := context.Background()
+	hashes := []types.HashAlgorithm{types.HashAlgorithm_HASH_ALGORITHM_SHA512}
+
+	p, err := (&ScopeSpecification{Scope: ScopeSignaturePrehashed}).WithAcceptedDigestHashes(hashes).ToProto(ctx)
+	require.NoError(t, err)
+	sig := p.GetSignature()
+	require.Nil(t, sig.Deterministic)
+	require.Nil(t, sig.NonMalleable)
+	require.Equal(t, hashes, sig.GetAcceptedDigestHashes())
+
+	p, err = (&ScopeSpecification{
+		Scope:                  ScopeSignaturePrehashed,
+		PrimitiveSpecificProps: &SignatureProperties{Deterministic: true, AcceptedDigestHashes: hashes},
+	}).ToProto(ctx)
+	require.NoError(t, err)
+	require.True(t, p.GetSignature().GetDeterministic())
+	require.Nil(t, p.GetSignature().NonMalleable)
+}
+
 func TestScopeSpecification_AEADOptions(t *testing.T) {
 	s := ScopeAeadStandard
 	props := &SecurityProperties{
