@@ -63,6 +63,9 @@ func LoadStandardCatalog(ctx context.Context, catalogPath string, r Registry) er
 			return errors.Wrap(ctx, op, valErr, errors.WithMessage("template %s failed constraint validation", templateID))
 		}
 		tmpl := NewTemplate(info)
+		if hashErr := ValidateAcceptedDigestHashes(ctx, tmpl); hashErr != nil {
+			return errors.Wrap(ctx, op, hashErr, errors.WithMessage("template %s failed constraint validation", templateID))
+		}
 		if regErr := r.Register(ctx, tmpl); regErr != nil {
 			return errors.Wrap(ctx, op, regErr, errors.WithMessage("failed to register template %s from catalog", tmpl.TemplateID()))
 		}
