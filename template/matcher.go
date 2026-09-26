@@ -2,6 +2,7 @@ package template
 
 import (
 	"context"
+	"slices"
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
@@ -131,6 +132,13 @@ func matchesSignatureProperties(ctx context.Context, want *core.SignaturePropert
 	}
 	if want.NonMalleable && !g.NonMalleable {
 		return false, nil
+	}
+	// A requested digest-hash list is a requirement: the template must accept
+	// every hash in it.
+	for _, h := range want.AcceptedDigestHashes {
+		if !slices.Contains(g.AcceptedDigestHashes, h) {
+			return false, nil
+		}
 	}
 	return true, nil
 }

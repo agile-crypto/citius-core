@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 
+	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	"github.com/agile-crypto/citius-core/errors"
 )
 
@@ -85,6 +86,43 @@ func NewPrimitiveSpecificProperties(ctx context.Context, opts ...ScopeOption) (P
 type SignatureProperties struct {
 	NonMalleable  bool
 	Deterministic bool
+	// AcceptedDigestHashes lists the digest hashes a prehashed scope accepts,
+	// preferred first (proto: SignatureScopeSpec.accepted_digest_hashes).
+	// On a template it is what the template can sign; on a request, a
+	// requirement the template must satisfy; on a key version, what the
+	// version accepts. Empty for non-prehashed scopes.
+	AcceptedDigestHashes []types.HashAlgorithm
+}
+
+// IsPrehashed reports whether the scope's input is a digest rather than a
+// message.
+func (s Scope) IsPrehashed() bool {
+	return s == ScopeSignaturePrehashed || s == ScopeSignaturePrehashedWithContext
+}
+
+// AcceptedDigestHashes returns the digest hashes recorded in a signature
+// scope specification, or nil when there are none.
+func (s *ScopeSpecification) AcceptedDigestHashes() []types.HashAlgorithm {
+	if s == nil {
+		return nil
+	}
+	if p, ok := s.PrimitiveSpecificProps.(*SignatureProperties); ok && p != nil {
+		return p.AcceptedDigestHashes
+	}
+	return nil
+}
+
+// WithAcceptedDigestHashes returns a copy of s whose accepted digest hashes
+// are hashes, keeping every other property. s is not modified.
+func (s *ScopeSpecification) WithAcceptedDigestHashes(hashes []types.HashAlgorithm) *ScopeSpecification {
+	res := *s
+	props := &SignatureProperties{}
+	if p, ok := s.PrimitiveSpecificProps.(*SignatureProperties); ok && p != nil {
+		*props = *p
+	}
+	props.AcceptedDigestHashes = append([]types.HashAlgorithm(nil), hashes...)
+	res.PrimitiveSpecificProps = props
+	return &res
 }
 
 func (s *SignatureProperties) defaultPrimitiveSpecificProperties() PrimitiveSpecificProperties {

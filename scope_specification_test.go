@@ -119,6 +119,32 @@ func TestScopeSpecification_SignatureOptions(t *testing.T) {
 	require.Equal(t, sigSpec.Signature.AdditionalProperties["vendor"], "example", "Additional properties do not match")
 }
 
+func TestScopeSpecification_AcceptedDigestHashesRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	hashes := []types.HashAlgorithm{types.HashAlgorithm_HASH_ALGORITHM_SHA384, types.HashAlgorithm_HASH_ALGORITHM_SHA512}
+	spec := (&ScopeSpecification{Scope: ScopeSignaturePrehashed}).WithAcceptedDigestHashes(hashes)
+
+	data, err := spec.Serialize(ctx)
+	require.NoError(t, err)
+	got := &ScopeSpecification{}
+	require.NoError(t, got.Deserialize(ctx, data))
+	require.Equal(t, ScopeSignaturePrehashed, got.Scope)
+	require.Equal(t, hashes, got.AcceptedDigestHashes(), "order is the preference and must survive a round trip")
+
+	// WithAcceptedDigestHashes keeps other signature properties and never
+	// mutates its receiver or the caller's slice.
+	base := &ScopeSpecification{Scope: ScopeSignaturePrehashed, PrimitiveSpecificProps: &SignatureProperties{Deterministic: true}}
+	narrowed := base.WithAcceptedDigestHashes(hashes)
+	hashes[0] = types.HashAlgorithm_HASH_ALGORITHM_SHA256
+	require.Nil(t, base.AcceptedDigestHashes())
+	require.True(t, narrowed.PrimitiveSpecificProps.(*SignatureProperties).Deterministic)
+	require.Equal(t, types.HashAlgorithm_HASH_ALGORITHM_SHA384, narrowed.AcceptedDigestHashes()[0])
+
+	require.Nil(t, (&ScopeSpecification{Scope: ScopeSignatureStandard}).AcceptedDigestHashes())
+	require.True(t, ScopeSignaturePrehashedWithContext.IsPrehashed())
+	require.False(t, ScopeSignatureWithContext.IsPrehashed())
+}
+
 func TestScopeSpecification_AEADOptions(t *testing.T) {
 	s := ScopeAeadStandard
 	props := &SecurityProperties{

@@ -121,10 +121,11 @@ func extractSignature(s *types.ScopeSpecification_Signature) *protoScopeSpec {
 		securityProps:   s.Signature.Security,
 		additionalProps: s.Signature.AdditionalProperties,
 	}
-	if s.Signature.NonMalleable != nil || s.Signature.Deterministic != nil {
+	if s.Signature.NonMalleable != nil || s.Signature.Deterministic != nil || len(s.Signature.AcceptedDigestHashes) > 0 {
 		res.primitiveProps = &SignatureProperties{
-			NonMalleable:  s.Signature.NonMalleable != nil && *s.Signature.NonMalleable,
-			Deterministic: s.Signature.Deterministic != nil && *s.Signature.Deterministic,
+			NonMalleable:         s.Signature.NonMalleable != nil && *s.Signature.NonMalleable,
+			Deterministic:        s.Signature.Deterministic != nil && *s.Signature.Deterministic,
+			AcceptedDigestHashes: append([]types.HashAlgorithm(nil), s.Signature.AcceptedDigestHashes...),
 		}
 	}
 	return res
@@ -303,6 +304,7 @@ func (s *ScopeSpecification) ToProto(ctx context.Context) (*types.ScopeSpecifica
 					AdditionalProperties: s.AdditionalProps,
 					NonMalleable:         computeIfNotNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.NonMalleable }),
 					Deterministic:        computeIfNotNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.Deterministic }),
+					AcceptedDigestHashes: append([]types.HashAlgorithm(nil), s.AcceptedDigestHashes()...),
 				},
 			},
 		}, nil
