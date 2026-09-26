@@ -98,3 +98,38 @@ func TestValidateSignatureRequest_requiresCatalogOperation(t *testing.T) {
 		signOnly, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, noContext)
 	requireCoreErrorCode(t, err, errors.CodeInvalidArgument)
 }
+
+func TestValidateDigestHash(t *testing.T) {
+	ctx := context.Background()
+	version := func(spec *core.ScopeSpecification) *key.Version {
+		kv, err := key.NewVersion(ctx, "key:1", "key", "tmpl", "provider", 1, []byte("material"), spec)
+		require.NoError(t, err)
+		return kv
+	}
+	accepting := version(prehashedSpec(hashSHA384, hashSHA512))
+
+	tests := []struct {
+		name     string
+		kv       *key.Version
+		hash     types.HashAlgorithm
+		wantCode *errors.Code
+	}{
+		{"accepted preferred hash", accepting, hashSHA384, nil},
+		{"accepted second hash", accepting, hashSHA512, nil},
+		{"hash not accepted", accepting, hashSHA256, codePtr(errors.CodeInvalidArgument)},
+		{"missing hash", accepting, types.HashAlgorithm_HASH_ALGORITHM_UNSPECIFIED, codePtr(errors.CodeInvalidArgument)},
+		{"stored version without a list", version(prehashedSpec()), hashSHA256, codePtr(errors.CodeInternal)},
+		{"non-prehashed version", version(&core.ScopeSpecification{Scope: core.ScopeSignatureStandard}), hashSHA256,
+			codePtr(errors.CodeFailedPrecondition)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDigestHash(ctx, "test", tt.kv, tt.hash)
+			if tt.wantCode == nil {
+				require.NoError(t, err)
+				return
+			}
+			requireCoreErrorCode(t, err, *tt.wantCode)
+		})
+	}
+}

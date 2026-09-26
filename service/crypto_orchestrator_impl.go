@@ -330,7 +330,8 @@ func callVerifierAndValidate(ctx context.Context, op errors.Op, verifier provide
 // DigestSign signs a pre-computed digest — the provider does NOT hash;
 // req.HashAlgorithm describes the digest the caller supplies (for digest-size
 // validation and, for RSA, the DigestInfo/PSS hash), never the signature
-// scheme.  AlgorithmDetails is resolved from the key's bound template,
+// scheme; it must be one of the key version's accepted digest hashes and is
+// returned as SignResult.DigestHash.  AlgorithmDetails is resolved from the key's bound template,
 // exactly as Sign resolves it — no caller input selects the algorithm here
 // either (see crypto.DigestSignRequest and the north-bound DigestSignRequest,
 // neither of which carries an algorithm field).
@@ -385,8 +386,9 @@ func (o *cryptoOrchestrator) DigestSign(ctx context.Context, req crypto.DigestSi
 		return crypto.SignResult{}, errors.Wrap(ctx, op, err)
 	}
 
-	// 6a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, req.SignatureScopeFields); err != nil {
+	// 6a. Validate that the caller's scope_params match the key's declared
+	//     scope and that the version accepts the digest's hash.
+	if err = validateDigestRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_SIGN, req.SignatureScopeFields, req.HashAlgorithm); err != nil {
 		return crypto.SignResult{}, err
 	}
 
@@ -402,7 +404,6 @@ func (o *cryptoOrchestrator) DigestSign(ctx context.Context, req crypto.DigestSi
 		KeyMaterial:         genResp.GetKeyMaterial(),
 		Digest:              req.Digest,
 		HashAlgorithm:       req.HashAlgorithm,
-		HashAlgorithmOid:    req.HashAlgorithmOID,
 		Algorithm:           tmpl.GetAlgorithm(),
 		KeyMaterialEncoding: genResp.GetKeyMaterialEncoding(),
 	}
@@ -427,6 +428,7 @@ func (o *cryptoOrchestrator) DigestSign(ctx context.Context, req crypto.DigestSi
 		Algorithm:    templateID,
 		ProviderName: prov.Name(),
 		Output:       digestSignResp.GetOutput(),
+		DigestHash:   req.HashAlgorithm,
 	}, nil
 }
 
@@ -498,8 +500,9 @@ func (o *cryptoOrchestrator) DigestVerify(ctx context.Context, req crypto.Digest
 		return crypto.VerifyResult{}, errors.Wrap(ctx, op, err)
 	}
 
-	// 5a. Validate that the caller's scope_params match the key's declared scope.
-	if err = validateSignatureRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_VERIFY, req.SignatureScopeFields); err != nil {
+	// 5a. Validate that the caller's scope_params match the key's declared
+	//     scope and that the version accepts the recorded digest hash.
+	if err = validateDigestRequest(ctx, op, kv, tmpl, types.CryptoOperation_CRYPTO_OPERATION_DIGEST_VERIFY, req.SignatureScopeFields, req.DigestHash); err != nil {
 		return crypto.VerifyResult{}, err
 	}
 
@@ -516,8 +519,7 @@ func (o *cryptoOrchestrator) DigestVerify(ctx context.Context, req crypto.Digest
 		KeyMaterial:         genResp.GetPublicKeyBytes(),
 		Digest:              req.Digest,
 		Signature:           req.Signature,
-		HashAlgorithm:       req.HashAlgorithm,
-		HashAlgorithmOid:    req.HashAlgorithmOID,
+		HashAlgorithm:       req.DigestHash,
 		Algorithm:           tmpl.GetAlgorithm(),
 		Output:              req.Output,
 		KeyMaterialEncoding: genResp.GetPublicKeyEncoding(),
@@ -881,6 +883,51 @@ func validateSignatureRequest(
 		return errors.New(ctx, op, errors.CodeFailedPrecondition,
 			"template %q does not declare %s for scope %q",
 			tmpl.TemplateID(), operation, keyScopeSpec.Scope)
+	}
+	return nil
+}
+
+// validateDigestRequest runs validateSignatureRequest for a digest operation
+// and then requires the key version to accept hash, the hash that produced
+// the digest.
+func validateDigestRequest(
+	ctx context.Context,
+	op errors.Op,
+	kv *key.Version,
+	tmpl *template.Template,
+	operation types.CryptoOperation,
+	sf crypto.SignatureScopeFields,
+	hash types.HashAlgorithm,
+) error {
+	if err := validateSignatureRequest(ctx, op, kv, tmpl, operation, sf); err != nil {
+		return err
+	}
+	return validateDigestHash(ctx, op, kv, hash)
+}
+
+// validateDigestHash requires hash to be one of the digest hashes the key
+// version accepts. A prehashed version that records none is corrupt
+// (INTERNAL): CreateKey and TransformKey always store a list.
+func validateDigestHash(ctx context.Context, op errors.Op, kv *key.Version, hash types.HashAlgorithm) error {
+	if hash == types.HashAlgorithm_HASH_ALGORITHM_UNSPECIFIED {
+		return errors.New(ctx, op, errors.CodeInvalidArgument, "the digest hash algorithm is required")
+	}
+	spec := &core.ScopeSpecification{}
+	if err := spec.Deserialize(ctx, kv.GetScopeSpecification()); err != nil {
+		return errors.Wrap(ctx, op, err)
+	}
+	if !spec.Scope.IsPrehashed() {
+		return errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"key version %d has scope %q, which does not accept digests", kv.GetVersion(), spec.Scope)
+	}
+	accepted := spec.AcceptedDigestHashes()
+	if len(accepted) == 0 {
+		return errors.New(ctx, op, errors.CodeInternal,
+			"key version %d records no accepted digest hash", kv.GetVersion())
+	}
+	if !slices.Contains(accepted, hash) {
+		return errors.New(ctx, op, errors.CodeInvalidArgument,
+			"key version %d does not accept digest hash %s (accepted: %v)", kv.GetVersion(), hash, accepted)
 	}
 	return nil
 }

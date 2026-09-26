@@ -38,6 +38,10 @@ type SignResult struct {
 	Algorithm    string                   // template ID (e.g., "ecdsa-p256-sha256")
 	ProviderName string                   // which provider performed the operation
 	Output       *messages.ProviderOutput // from provider (NoAlgorithmOutput + encoding)
+	// DigestHash is the hash that produced the signed digest (DigestSign
+	// only). Callers record it in OperationMetadata.digest_hash so
+	// DigestVerify can check it.
+	DigestHash types.HashAlgorithm
 }
 
 type VerifyRequest struct {
@@ -70,10 +74,9 @@ type VerifyResult struct {
 // orchestrator resolves AlgorithmDetails from the template and passes it to
 // the provider, exactly as Sign does.
 type DigestSignRequest struct {
-	KeyName          string              // identifies which key to use
-	Digest           []byte              // pre-computed digest — the provider signs this raw
-	HashAlgorithm    types.HashAlgorithm // hash that produced Digest
-	HashAlgorithmOID string              // optional OID when HashAlgorithm is HASH_ALGORITHM_OTHER
+	KeyName       string              // identifies which key to use
+	Digest        []byte              // pre-computed digest — the provider signs this raw
+	HashAlgorithm types.HashAlgorithm // hash that produced Digest; must be accepted by the key version
 
 	// Scope-based context for domain separation — exactly one must be non-nil.
 	// Maps to the scope_params oneof in caas.crypto.v1.DigestSignRequest.
@@ -83,13 +86,14 @@ type DigestSignRequest struct {
 // DigestVerifyRequest carries the inputs for a DigestVerify operation —
 // verifying a signature over a pre-computed digest (proto: DigestVerifyRequest).
 type DigestVerifyRequest struct {
-	KeyName          string
-	KeyVersion       uint32 // version that was used
-	Digest           []byte // pre-computed digest that was signed
-	Signature        []byte
-	HashAlgorithm    types.HashAlgorithm // must match the hash used for the corresponding DigestSign
-	HashAlgorithmOID string
-	Output           *messages.ProviderOutput // from DigestSign (carries signature encoding)
+	KeyName    string
+	KeyVersion uint32 // version that was used
+	Digest     []byte // pre-computed digest that was signed
+	Signature  []byte
+	// DigestHash is the hash recorded by DigestSign
+	// (OperationMetadata.digest_hash); it must be accepted by the key version.
+	DigestHash types.HashAlgorithm
+	Output     *messages.ProviderOutput // from DigestSign (carries signature encoding)
 
 	// Scope must match the scope used during DigestSign.
 	SignatureScopeFields
