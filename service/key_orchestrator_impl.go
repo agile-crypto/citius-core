@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
@@ -128,7 +129,7 @@ func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpe
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument,
 			"scope is unknown or missing; scope is required for key creation")
 	}
-	tmpl, err := r.pickTemplate(ctx, req.PolicyID, req.TemplateID, req.ScopeSpecification)
+	tmpl, versionSpec, err := r.pickVersionTemplate(ctx, req.PolicyID, req.TemplateID, req.ScopeSpecification)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -145,7 +146,68 @@ func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpe
 	}
 
 	// 3. Generate key material and persist key + initial version.
-	return r.generateAndPersistKey(ctx, op, req, tmpl, req.ScopeSpecification)
+	return r.generateAndPersistKey(ctx, op, req, tmpl, versionSpec)
+}
+
+// pickVersionTemplate selects the template for a new key version and returns
+// it with the scope specification to store on that version.
+func (r *keyOrchestrator) pickVersionTemplate(ctx context.Context, policyID, templateID string, spec *core.ScopeSpecification) (*template.Template, *core.ScopeSpecification, error) {
+	const op = "service.(keyOrchestrator).pickVersionTemplate"
+	if err := validateRequestedDigestHashes(ctx, spec); err != nil {
+		return nil, nil, errors.Wrap(ctx, op, err)
+	}
+	tmpl, err := r.pickTemplate(ctx, policyID, templateID, spec)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, op, err)
+	}
+	versionSpec, err := resolveDigestHashes(ctx, tmpl, spec)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, op, err)
+	}
+	return tmpl, versionSpec, nil
+}
+
+// validateRequestedDigestHashes rejects accepted digest hashes on a scope
+// whose input is not a digest.
+func validateRequestedDigestHashes(ctx context.Context, spec *core.ScopeSpecification) error {
+	const op = "service.validateRequestedDigestHashes"
+	if !spec.Scope.IsPrehashed() && len(spec.AcceptedDigestHashes()) > 0 {
+		return errors.New(ctx, op, errors.CodeInvalidArgument,
+			"accepted_digest_hashes applies only to prehashed signature scopes, not %s", spec.Scope)
+	}
+	return nil
+}
+
+// resolveDigestHashes returns the scope specification to store on a new key
+// version. For a prehashed scope it records the digest hashes the version
+// accepts: the requested list, which may narrow the template's, or the
+// template's own list when the request names none. Other scopes are returned
+// unchanged. The caller's spec is never modified.
+func resolveDigestHashes(ctx context.Context, tmpl *template.Template, spec *core.ScopeSpecification) (*core.ScopeSpecification, error) {
+	const op = "service.resolveDigestHashes"
+	if !spec.Scope.IsPrehashed() {
+		return spec, nil
+	}
+	tmplSpec, err := template.ScopeSpecFor(ctx, tmpl, spec.Scope)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	offered := tmplSpec.AcceptedDigestHashes()
+	if len(offered) == 0 {
+		return nil, errors.New(ctx, op, errors.CodeInternal,
+			"template %s lists no accepted digest hash for prehashed scope %s", tmpl.TemplateID(), spec.Scope)
+	}
+	requested := spec.AcceptedDigestHashes()
+	if len(requested) == 0 {
+		return spec.WithAcceptedDigestHashes(offered), nil
+	}
+	for _, h := range requested {
+		if !slices.Contains(offered, h) {
+			return nil, errors.New(ctx, op, errors.CodeInvalidArgument,
+				"template %s does not accept digest hash %s for scope %s", tmpl.TemplateID(), h, spec.Scope)
+		}
+	}
+	return spec.WithAcceptedDigestHashes(requested), nil
 }
 
 // buildKeyMetadata projects a key.Key and its current key.Version into the
@@ -428,7 +490,7 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 
 	// Select or validate a template using the same scope and property filtering
 	// as CreateKey.
-	targetTemplate, err := r.pickTemplate(ctx, keyO.PolicyId, spec.TemplateID, spec.ScopeSpecification)
+	targetTemplate, versionSpec, err := r.pickVersionTemplate(ctx, keyO.PolicyId, spec.TemplateID, spec.ScopeSpecification)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -459,7 +521,7 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	newVersionNumber := lastVersion.GetVersion() + 1
 	newVersionID := computeVersionID(keyO.GetPublicId(), newVersionNumber)
 	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), targetTemplate.TemplateID(), provider.Name(), newVersionNumber,
-		keyMaterial, spec.ScopeSpecification, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
+		keyMaterial, versionSpec, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
