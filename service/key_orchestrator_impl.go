@@ -345,36 +345,35 @@ func (r *keyOrchestrator) UpdateKeyPolicy(ctx context.Context, _ string, _ strin
 		"UpdateKeyPolicy not yet implemented")
 }
 
-func validateTransformScope(ctx context.Context, keyPrimitive string, scopeSpec *core.ScopeSpecification) error {
+// validateTransformScope requires a scope and enforces that it equals the
+// scope of the key's current version. The scope is the key's contract with its
+// callers: it fixes the input shape (message or digest, with or without a
+// context, AEAD parameters or none) and the operations that accept it. A
+// transform may change the algorithm behind that contract, never the contract
+// itself, so callers keep working without code changes. Because every scope
+// belongs to exactly one primitive, this also keeps the key's primitive, in
+// both regenerate and retain mode.
+func validateTransformScope(ctx context.Context, currentScope core.Scope, scopeSpec *core.ScopeSpecification) error {
 	const op = "service.validateTransformScope"
 	if scopeSpec == nil || !scopeSpec.Scope.IsValid() {
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "scope specification is required")
 	}
-	requestedPrimitive := scopeSpec.Scope.GetPrimitive().String()
-	if requestedPrimitive != keyPrimitive {
+	if scopeSpec.Scope != currentScope {
 		return errors.New(ctx, op, errors.CodeFailedPrecondition,
-			"cannot transform key primitive %q to %q", keyPrimitive, requestedPrimitive)
+			"cannot transform key scope %q to %q: a transform must keep the key's scope",
+			currentScope, scopeSpec.Scope)
 	}
 	return nil
 }
 
-func validateTransformScopePresent(ctx context.Context, scopeSpec *core.ScopeSpecification) error {
-	const op = "service.validateTransformScopePresent"
-	if scopeSpec == nil || !scopeSpec.Scope.IsValid() {
-		return errors.New(ctx, op, errors.CodeInvalidArgument, "scope specification is required")
+// versionScope returns the scope recorded on a key version.
+func versionScope(ctx context.Context, v *key.Version) (core.Scope, error) {
+	const op = "service.versionScope"
+	spec := &core.ScopeSpecification{}
+	if err := spec.Deserialize(ctx, v.GetScopeSpecification()); err != nil {
+		return core.ScopeUnknown, errors.Wrap(ctx, op, err)
 	}
-	return nil
-}
-
-// validateTransformRequestScope requires a scope and, when regenerating key
-// material, enforces the key's immutable primitive. Retain mode relies on
-// key-material compatibility instead, which permits approved cross-primitive
-// transitions such as AES-GCM to AES-CBC.
-func validateTransformRequestScope(ctx context.Context, spec TransformKeySpec, keyPrimitive string) error {
-	if spec.RetainBytes {
-		return validateTransformScopePresent(ctx, spec.ScopeSpecification)
-	}
-	return validateTransformScope(ctx, keyPrimitive, spec.ScopeSpecification)
+	return spec.Scope, nil
 }
 
 func retainedKeyMaterial(ctx context.Context, sourceTemplate, targetTemplate *template.Template, stored []byte) ([]byte, error) {
@@ -408,18 +407,22 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 			"template ID is required when retaining key bytes")
 	}
 
-	// Retrieve the key and enforce its immutable primitive boundary before any
-	// template selection, provider call, or persistence side effect.
+	// Retrieve the key and its current version, and enforce the scope contract
+	// before any template selection, provider call, or persistence side effect.
 	keyO, err := r.keys.GetKeyByName(ctx, spec.KeyName)
 	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
-	if err = validateTransformRequestScope(ctx, spec, keyO.GetPrimitive()); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
 	lastVersion, err := r.keys.GetVersion(ctx, keyO.PublicId, keyO.CurrentVersion)
 	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	currentScope, err := versionScope(ctx, lastVersion)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	if err = validateTransformScope(ctx, currentScope, spec.ScopeSpecification); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 

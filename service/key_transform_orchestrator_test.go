@@ -39,18 +39,18 @@ func TestTransformKey_retainKeyBytes(t *testing.T) {
 			scope:     core.ScopeSignatureStandard,
 		},
 		{
-			name:      "AES-256 GCM to CBC across primitives",
-			primitive: core.PrimitiveAead,
-			source:    aesGcmTemplate("aes-256-gcm", 256),
-			target:    aesCbcTemplate("aes-256-cbc", 256),
-			scope:     core.ScopeSymmetricCipherBlock,
+			name:      "RSA-2048 PSS to PKCS1v15 within the standard signature scope",
+			primitive: core.PrimitiveSignature,
+			source:    rsaPssTemplate("rsa-pss-2048", 2048),
+			target:    rsaPkcs1v15Template("rsa-pkcs1v15-2048", 2048),
+			scope:     core.ScopeSignatureStandard,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			f := newTransformFixture(t, tt.primitive, tt.source, tt.target)
+			f := newTransformFixture(t, tt.primitive, tt.scope, tt.source, tt.target)
 			storedBefore := append([]byte(nil), f.repo.versions[1].GetKeyMaterial()...)
 			scopeSpec := &core.ScopeSpecification{Scope: tt.scope}
 
@@ -91,10 +91,12 @@ func TestTransformKey_retainKeyBytesRejectsBeforeSideEffects(t *testing.T) {
 		source     *template.Template
 		target     *template.Template
 		templateID string
-		scope      core.Scope
-		mutate     func(*transformFixture)
-		wantCode   errors.Code
-		wantErr    string
+		// sourceScope is the current version's scope; zero means scope.
+		sourceScope core.Scope
+		scope       core.Scope
+		mutate      func(*transformFixture)
+		wantCode    errors.Code
+		wantErr     string
 	}{
 		{
 			name:      "missing template ID",
@@ -104,6 +106,39 @@ func TestTransformKey_retainKeyBytesRejectsBeforeSideEffects(t *testing.T) {
 			scope:     core.ScopeSignatureStandard,
 			wantCode:  errors.CodeInvalidArgument,
 			wantErr:   "template ID is required",
+		},
+		{
+			name:        "standard to prehashed signature scope",
+			primitive:   core.PrimitiveSignature,
+			source:      p256,
+			target:      ecdsaTemplate("ecdsa-p256-prehashed", types.EllipticCurve_ELLIPTIC_CURVE_P256, false),
+			templateID:  "ecdsa-p256-prehashed",
+			sourceScope: core.ScopeSignatureStandard,
+			scope:       core.ScopeSignaturePrehashed,
+			wantCode:    errors.CodeFailedPrecondition,
+			wantErr:     "must keep the key's scope",
+		},
+		{
+			name:        "AES-GCM to AES-CBC across scopes",
+			primitive:   core.PrimitiveAead,
+			source:      aesGcmTemplate("aes-256-gcm", 256),
+			target:      aesCbcTemplate("aes-256-cbc", 256),
+			templateID:  "aes-256-cbc",
+			sourceScope: core.ScopeAeadStandard,
+			scope:       core.ScopeSymmetricCipherBlock,
+			wantCode:    errors.CodeFailedPrecondition,
+			wantErr:     "must keep the key's scope",
+		},
+		{
+			name:        "RSA signing key to encryption scope",
+			primitive:   core.PrimitiveSignature,
+			source:      rsaPssTemplate("rsa-pss-2048", 2048),
+			target:      rsaOaepTemplate("rsa-oaep-2048", 2048),
+			templateID:  "rsa-oaep-2048",
+			sourceScope: core.ScopeSignatureStandard,
+			scope:       core.ScopeKemStandard,
+			wantCode:    errors.CodeFailedPrecondition,
+			wantErr:     "must keep the key's scope",
 		},
 		{
 			name:       "different ECDSA curve",
@@ -164,7 +199,11 @@ func TestTransformKey_retainKeyBytesRejectsBeforeSideEffects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := newTransformFixture(t, tt.primitive, tt.source, tt.target)
+			sourceScope := tt.sourceScope
+			if sourceScope == core.ScopeUnknown {
+				sourceScope = tt.scope
+			}
+			f := newTransformFixture(t, tt.primitive, sourceScope, tt.source, tt.target)
 			if tt.mutate != nil {
 				tt.mutate(f)
 			}
@@ -190,7 +229,7 @@ func TestTransformKey_regenerateKeyBytes(t *testing.T) {
 	ctx := context.Background()
 	source := ecdsaTemplate("ecdsa-p256", types.EllipticCurve_ELLIPTIC_CURVE_P256, false)
 	target := ecdsaTemplate("ecdsa-p256-deterministic", types.EllipticCurve_ELLIPTIC_CURVE_P256, true)
-	f := newTransformFixture(t, core.PrimitiveSignature, source, target)
+	f := newTransformFixture(t, core.PrimitiveSignature, core.ScopeSignatureStandard, source, target)
 	storedBefore := append([]byte(nil), f.repo.versions[1].GetKeyMaterial()...)
 
 	md, err := f.orchestrator.TransformKey(ctx, TransformKeySpec{
@@ -204,15 +243,20 @@ func TestTransformKey_regenerateKeyBytes(t *testing.T) {
 	require.NotEqual(t, storedBefore, f.repo.versions[2].GetKeyMaterial())
 	require.Equal(t, storedBefore, f.repo.versions[1].GetKeyMaterial())
 
-	f = newTransformFixture(t, core.PrimitiveSignature, source, target)
-	_, err = f.orchestrator.TransformKey(ctx, TransformKeySpec{
-		KeyName:            transformKeyName,
-		ScopeSpecification: &core.ScopeSpecification{Scope: core.ScopeAeadStandard},
-		TemplateID:         target.TemplateID(),
-	})
-	requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
-	require.Zero(t, f.backend.generateCalls)
-	require.Zero(t, f.repo.addVersionCalls)
+	// Regenerating must keep the scope as well: another primitive, or another
+	// scope of the same primitive, is refused before any side effect.
+	for _, scope := range []core.Scope{core.ScopeAeadStandard, core.ScopeSignaturePrehashed} {
+		f = newTransformFixture(t, core.PrimitiveSignature, core.ScopeSignatureStandard, source, target)
+		_, err = f.orchestrator.TransformKey(ctx, TransformKeySpec{
+			KeyName:            transformKeyName,
+			ScopeSpecification: &core.ScopeSpecification{Scope: scope},
+			TemplateID:         target.TemplateID(),
+		})
+		requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
+		require.ErrorContains(t, err, "must keep the key's scope")
+		require.Zero(t, f.backend.generateCalls)
+		require.Zero(t, f.repo.addVersionCalls)
+	}
 }
 
 // ── fixture ───────────────────────────────────────────────────────────────
@@ -224,7 +268,7 @@ type transformFixture struct {
 	backend      *countingBackend
 }
 
-func newTransformFixture(t *testing.T, primitive core.Primitive, source, target *template.Template) *transformFixture {
+func newTransformFixture(t *testing.T, primitive core.Primitive, sourceScope core.Scope, source, target *template.Template) *transformFixture {
 	t.Helper()
 	ctx := context.Background()
 
@@ -241,7 +285,7 @@ func newTransformFixture(t *testing.T, primitive core.Primitive, source, target 
 	require.NoError(t, err)
 	v, err := key.NewVersion(ctx, computeVersionID(transformKeyID, 1), transformKeyID,
 		source.TemplateID(), transformProviderID, 1, stored,
-		&core.ScopeSpecification{Scope: core.ScopeSignatureStandard},
+		&core.ScopeSpecification{Scope: sourceScope},
 		key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
 	require.NoError(t, err)
 
@@ -276,6 +320,24 @@ func aesGcmTemplate(id string, bits uint32) *template.Template {
 func aesCbcTemplate(id string, bits uint32) *template.Template {
 	return retainedTemplate(id, "AES", &types.AlgorithmDetails{Algorithm: &types.AlgorithmDetails_AesCbc{
 		AesCbc: &types.AesCbcParams{KeySizeBits: bits},
+	}})
+}
+
+func rsaPssTemplate(id string, bits uint32) *template.Template {
+	return retainedTemplate(id, "RSA", &types.AlgorithmDetails{Algorithm: &types.AlgorithmDetails_RsaPss{
+		RsaPss: &types.RsaPssParams{KeySizeBits: bits},
+	}})
+}
+
+func rsaPkcs1v15Template(id string, bits uint32) *template.Template {
+	return retainedTemplate(id, "RSA", &types.AlgorithmDetails{Algorithm: &types.AlgorithmDetails_RsaPkcs1V15{
+		RsaPkcs1V15: &types.RsaPkcs1V15Params{KeySizeBits: bits},
+	}})
+}
+
+func rsaOaepTemplate(id string, bits uint32) *template.Template {
+	return retainedTemplate(id, "RSA", &types.AlgorithmDetails{Algorithm: &types.AlgorithmDetails_RsaOaep{
+		RsaOaep: &types.RsaOaepParams{KeySizeBits: bits},
 	}})
 }
 

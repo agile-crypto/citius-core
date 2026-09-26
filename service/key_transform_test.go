@@ -15,44 +15,56 @@ import (
 
 func TestValidateTransformScope(t *testing.T) {
 	tests := []struct {
-		name         string
-		keyPrimitive string
-		scopeSpec    *core.ScopeSpecification
-		wantCode     errors.Code
+		name      string
+		current   core.Scope
+		scopeSpec *core.ScopeSpecification
+		wantCode  errors.Code
 	}{
 		{
-			name:         "same primitive",
-			keyPrimitive: core.PrimitiveSignature.String(),
-			scopeSpec:    &core.ScopeSpecification{Scope: core.ScopeSignaturePrehashed},
+			name:      "same scope",
+			current:   core.ScopeSignaturePrehashed,
+			scopeSpec: &core.ScopeSpecification{Scope: core.ScopeSignaturePrehashed},
 		},
 		{
-			name:         "missing scope",
-			keyPrimitive: core.PrimitiveSignature.String(),
-			wantCode:     errors.CodeInvalidArgument,
+			name:     "missing scope",
+			current:  core.ScopeSignatureStandard,
+			wantCode: errors.CodeInvalidArgument,
 		},
 		{
-			name:         "unknown scope",
-			keyPrimitive: core.PrimitiveSignature.String(),
-			scopeSpec:    &core.ScopeSpecification{Scope: core.ScopeUnknown},
-			wantCode:     errors.CodeInvalidArgument,
+			name:      "unknown scope",
+			current:   core.ScopeSignatureStandard,
+			scopeSpec: &core.ScopeSpecification{Scope: core.ScopeUnknown},
+			wantCode:  errors.CodeInvalidArgument,
 		},
 		{
-			name:         "invalid scope",
-			keyPrimitive: core.PrimitiveSignature.String(),
-			scopeSpec:    &core.ScopeSpecification{Scope: core.Scope(1000)},
-			wantCode:     errors.CodeInvalidArgument,
+			name:      "invalid scope",
+			current:   core.ScopeSignatureStandard,
+			scopeSpec: &core.ScopeSpecification{Scope: core.Scope(1000)},
+			wantCode:  errors.CodeInvalidArgument,
 		},
 		{
-			name:         "different primitive",
-			keyPrimitive: core.PrimitiveSignature.String(),
-			scopeSpec:    &core.ScopeSpecification{Scope: core.ScopeAeadStandard},
-			wantCode:     errors.CodeFailedPrecondition,
+			name:      "different scope, same primitive",
+			current:   core.ScopeSignatureStandard,
+			scopeSpec: &core.ScopeSpecification{Scope: core.ScopeSignaturePrehashed},
+			wantCode:  errors.CodeFailedPrecondition,
+		},
+		{
+			name:      "with context to without context",
+			current:   core.ScopeSignatureWithContext,
+			scopeSpec: &core.ScopeSpecification{Scope: core.ScopeSignatureStandard},
+			wantCode:  errors.CodeFailedPrecondition,
+		},
+		{
+			name:      "different primitive",
+			current:   core.ScopeSignatureStandard,
+			scopeSpec: &core.ScopeSpecification{Scope: core.ScopeAeadStandard},
+			wantCode:  errors.CodeFailedPrecondition,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateTransformScope(context.Background(), tt.keyPrimitive, tt.scopeSpec)
+			err := validateTransformScope(context.Background(), tt.current, tt.scopeSpec)
 			if tt.wantCode == 0 {
 				require.NoError(t, err)
 				return
