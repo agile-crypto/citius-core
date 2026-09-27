@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/stretchr/testify/require"
@@ -108,4 +109,54 @@ func TestCreateKey_scopeFIPSApprovalDoesNotChooseTheProvider(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, migrateTargetInstance, md.Provider)
 	require.True(t, f.providers.matched[len(f.providers.matched)-1].Implementation.IsZero())
+}
+
+var approvedGenerationRule = providerRulePolicy{requirements: core.ProviderRequirements{ApprovedGeneration: true}}
+
+func TestMigrateKey_approvedGenerationNeedsAnApprovedLineageToKeepMaterial(t *testing.T) {
+	ctx := context.Background()
+	toFIPS := func(strategy messagespb.MigrationStrategy) MigrateKeySpec {
+		return MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateFIPSInstance, Strategy: strategy}
+	}
+
+	f := newMigrateFixture(t)
+	f.withPolicy(t, approvedGenerationRule)
+	_, err := f.orchestrator.MigrateKey(ctx, toFIPS(strategySwitch))
+	requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
+	require.ErrorContains(t, err, "requires approved generation")
+	require.Zero(t, f.repo.addVersionCalls)
+
+	res, err := f.orchestrator.MigrateKey(ctx, toFIPS(strategyArchive))
+	require.NoError(t, err, "rekeying onto an approved module is how such a key regains an approved lineage")
+	require.True(t, f.repo.versions[res.Key.Version].GetApprovedLineage())
+
+	f = newMigrateFixture(t)
+	f.withPolicy(t, approvedGenerationRule)
+	f.repo.versions[1].ApprovedLineage = true
+	res, err = f.orchestrator.MigrateKey(ctx, toFIPS(strategySwitch))
+	require.NoError(t, err)
+	require.True(t, f.repo.versions[res.Key.Version].GetApprovedLineage())
+}
+
+func TestTransformKey_approvedGenerationNeedsAnApprovedLineageToRetainMaterial(t *testing.T) {
+	for _, lineage := range []bool{false, true} {
+		f := newMigrateFixture(t)
+		f.withPolicy(t, approvedGenerationRule)
+		f.repo.versions[1].ProviderId = migrateFIPSInstance
+		f.repo.versions[1].ApprovedLineage = lineage
+
+		_, err := f.orchestrator.TransformKey(context.Background(), TransformKeySpec{
+			KeyName:            transformKeyName,
+			TemplateID:         f.template.TemplateID(),
+			ScopeSpecification: &core.ScopeSpecification{Scope: core.ScopeSignatureStandard},
+			RetainBytes:        true,
+		})
+		if lineage {
+			require.NoError(t, err)
+			continue
+		}
+		requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
+		require.ErrorContains(t, err, "requires approved generation")
+		require.Zero(t, f.repo.addVersionCalls)
+	}
 }

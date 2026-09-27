@@ -456,7 +456,7 @@ func (r *multiProviderRegistry) Match(ctx context.Context, req provider.Requirem
 		return nil, errors.New(ctx, "fake.Match", errors.CodeProviderNotFound,
 			"provider %q does not support template %q", req.ProviderName, req.TemplateID)
 	}
-	if req.Implementation.FIPS140Certified && !r.fips[req.ProviderName] {
+	if (req.Implementation.FIPS140Certified || req.Implementation.ApprovedGeneration) && !r.fips[req.ProviderName] {
 		return nil, errors.New(ctx, "fake.Match", errors.CodeFailedPrecondition,
 			"provider %q is not FIPS 140 certified", req.ProviderName)
 	}

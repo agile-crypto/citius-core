@@ -558,22 +558,37 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	if err = r.validateTransformOp(ctx, keyO.GetName(), keyO.GetPolicyId(), spec.ScopeSpecification, provider, targetTemplate, keyO.GetLabels()); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
+	provenance, err := transformProvenance(ctx, custody, spec.RetainBytes, lastVersion, provider, targetTemplate)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
 
 	keyMaterial, err := r.transformKeyMaterial(ctx, spec.RetainBytes, lastVersion, targetTemplate, provider)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	provenance := generatedProvenance(provider, targetTemplate)
-	if spec.RetainBytes {
-		provenance = keptProvenance(lastVersion, provider, targetTemplate,
-			storepb.KeyOriginKind_KEY_ORIGIN_KIND_RETAINED, storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD)
-	}
 	metadata, err := r.appendVersion(ctx, keyO, lastVersion, targetTemplate.TemplateID(), provider.Name(), keyMaterial, versionSpec, provenance)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	return metadata, nil
+}
+
+// transformProvenance is the provenance of the version a transform creates
+// on prov for tmpl: that of lastVersion's material when retaining it, which
+// custody may refuse (see requireKeptLineage), else that of new material.
+func transformProvenance(ctx context.Context, custody provider.Requirements, retain bool,
+	lastVersion *key.Version, prov provider.Backend, tmpl *template.Template) (key.Provenance, error) {
+	const op = "service.transformProvenance"
+	if !retain {
+		return generatedProvenance(prov, tmpl), nil
+	}
+	if err := requireKeptLineage(ctx, custody, lastVersion); err != nil {
+		return key.Provenance{}, errors.Wrap(ctx, op, err)
+	}
+	return keptProvenance(lastVersion, prov, tmpl,
+		storepb.KeyOriginKind_KEY_ORIGIN_KIND_RETAINED, storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD), nil
 }
 
 // appendVersion persists a new active version of keyO, numbered after

@@ -1,7 +1,10 @@
 package service
 
 import (
+	"context"
+
 	core "github.com/agile-crypto/citius-core"
+	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/key"
 	"github.com/agile-crypto/citius-core/provider"
 	storepb "github.com/agile-crypto/citius-core/store"
@@ -44,4 +47,19 @@ func keptProvenance(source *key.Version, prov provider.Backend, tmpl *template.T
 			Channel:          channel,
 		},
 	}
+}
+
+// requireKeptLineage refuses to keep source's material under a policy
+// requiring approved generation (see core.ProviderRequirements) unless the
+// material has an approved lineage. Matching the target provider already
+// ensures it meets the requirement; this ensures the material does too,
+// since kept material carries its history with it.
+func requireKeptLineage(ctx context.Context, custody provider.Requirements, source *key.Version) error {
+	const op = "service.requireKeptLineage"
+	if custody.Implementation.ApprovedGeneration && !source.GetApprovedLineage() {
+		return errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"the key's policy requires approved generation, and the material of version %d was not generated and kept only by approved modules; rekey instead",
+			source.GetVersion())
+	}
+	return nil
 }

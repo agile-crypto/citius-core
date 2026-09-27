@@ -230,6 +230,19 @@ func (r *keyOrchestrator) migrationSource(ctx context.Context, instance string) 
 	}
 }
 
+// transfersMaterial reports whether strategy moves the key's existing
+// material to the target, rather than generating new material there.
+func transfersMaterial(strategy messagespb.MigrationStrategy) bool {
+	switch strategy {
+	case messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH,
+		messagespb.MigrationStrategy_MIGRATION_STRATEGY_EXTRACT_AND_IMPORT,
+		messagespb.MigrationStrategy_MIGRATION_STRATEGY_WRAPPED_TRANSFER:
+		return true
+	default:
+		return false
+	}
+}
+
 // backendType returns b's provider type, or "" for nil.
 func backendType(b provider.Backend) string {
 	if b == nil {
@@ -241,7 +254,9 @@ func backendType(b provider.Backend) string {
 // migrationTarget resolves the provider instance version migrates to with
 // spec.Strategy. The target must support the key's template, meet its
 // policy's provider requirements, and, with source, carry out the strategy
-// (see transferFeasibility). It is never version's own instance.
+// (see transferFeasibility). It is never version's own instance. A strategy
+// that transfers the material also needs it to have an approved lineage
+// when the policy requires approved generation.
 //
 // A provider-type target resolves to the first instance of that type that
 // qualifies. An instance is passed over only when it does not; any other
@@ -259,6 +274,11 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	custody.TemplateID = tmpl.TemplateID()
+	if transfersMaterial(spec.Strategy) {
+		if err = requireKeptLineage(ctx, custody, version); err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
+	}
 	candidate := func(name string) (provider.Backend, error) {
 		pinned := custody
 		pinned.ProviderName = name
