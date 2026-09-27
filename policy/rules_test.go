@@ -80,19 +80,18 @@ func TestParseRules_invalidJSON_returnsError(t *testing.T) {
 	}
 }
 
-func TestParseRules_unknownFieldsIgnored(t *testing.T) {
-	// Forward compatibility: unknown JSON fields should NOT cause a parse error
-	raw := []byte(`{
-		"version": "1",
-		"allowed_templates": ["ecdsa-p256-sha256"],
-		"future_section": {"foo": "bar"}
-	}`)
-	rules, err := ParseRules(raw)
-	if err != nil {
-		t.Fatalf("ParseRules: %v (should ignore unknown fields)", err)
-	}
-	if len(rules.AllowedTemplates) != 1 {
-		t.Errorf("AllowedTemplates: got %d want 1", len(rules.AllowedTemplates))
+func TestParseRules_unknownFieldsRejected(t *testing.T) {
+	// A misspelt section or rule must not be silently unenforced.
+	for name, raw := range map[string]string{
+		"unknown section":  `{"version": "1", "future_section": {"foo": "bar"}}`,
+		"misspelt section": `{"version": "1", "providerRequirements": {"memory_safe": true}}`,
+		"unknown rule":     `{"version": "1", "allowed_operations": {"key_ops": ["sign"]}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseRules([]byte(raw)); err == nil {
+				t.Fatal("ParseRules: expected an error for an unknown field")
+			}
+		})
 	}
 }
 

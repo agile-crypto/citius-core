@@ -42,16 +42,12 @@ type SecurityRequirementRule struct {
 
 // ProviderRequirementRule sets the provider properties every key under the
 // policy requires, whenever a key version is placed on a provider: at
-// CreateKey, TransformKey and MigrateKey. Like SecurityRequirements it is a
-// constraint, not an allowlist: absent means no requirement. A request may
-// add requirements but cannot relax these. Field meanings follow
-// core.ProviderRequirements; min_fips_level is a level from 1 to 4. The
-// section holds requirements only: a preference such as
-// prefer_hardware_accelerated belongs on the request.
-//
-// Unlike the rest of the rules, unknown fields in this section are an error:
-// a requirement this code cannot read cannot be enforced, and must not be
-// ignored.
+// CreateKey, TransformKey and MigrateKey. It is a constraint, not an
+// allowlist: absent means no requirement. A request may add requirements but
+// cannot relax these. Field meanings follow core.ProviderRequirements;
+// min_fips_level is a level from 1 to 4. The section holds requirements
+// only: a preference such as prefer_hardware_accelerated belongs on the
+// request.
 type ProviderRequirementRule struct {
 	FIPS140Certified        bool   `json:"fips_140_certified,omitempty"`
 	MinFIPS140Level         uint32 `json:"min_fips_level,omitempty"`
@@ -61,14 +57,6 @@ type ProviderRequirementRule struct {
 	ConstantTime            bool   `json:"constant_time,omitempty"`
 	SideChannelHardened     bool   `json:"side_channel_hardened,omitempty"`
 	NoKnownCVE              bool   `json:"no_known_cve,omitempty"`
-}
-
-// UnmarshalJSON decodes the section, rejecting unknown fields.
-func (r *ProviderRequirementRule) UnmarshalJSON(data []byte) error {
-	type plain ProviderRequirementRule
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	return dec.Decode((*plain)(r))
 }
 
 // Requirements returns the rule as core.ProviderRequirements. A nil rule
@@ -89,7 +77,7 @@ func (r *ProviderRequirementRule) Requirements() core.ProviderRequirements {
 	}
 }
 
-// --- TODO: sub-types (parsed for forward compat, not validated for now) ---
+// --- TODO: sub-types (parsed, not validated or evaluated for now) ---
 
 // ScopeRule restricts operations to specific primitives/scopes.
 type ScopeRule struct {
@@ -135,13 +123,16 @@ type MigrationRule struct {
 
 // ParseRules deserializes raw JSON bytes into a Rules struct.
 // nil or empty bytes return an empty Rules (all sections nil).
-// Unknown JSON fields are silently ignored (forward compatibility).
+// Unknown fields, at any depth, are an error: a misspelt section or rule
+// would otherwise be silently unenforced.
 func ParseRules(raw []byte) (*Rules, error) {
 	if len(raw) == 0 {
 		return &Rules{}, nil
 	}
 	rules := &Rules{}
-	if err := json.Unmarshal(raw, rules); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(rules); err != nil {
 		return nil, fmt.Errorf("parse rules_json: %w", err)
 	}
 	return rules, nil
@@ -180,7 +171,8 @@ var supportedVersions = map[string]bool{
 //
 // validates: version, allowed_templates (non-empty strings),
 // allowed_operations.key_operations (known operations),
-// security_requirements (bool fields — no string validation needed).
+// security_requirements (bool fields — no string validation needed),
+// provider_requirements.min_fips_level (a level from 1 to 4).
 //
 // TODO sections are silently skipped (no validation).
 func (r *Rules) Validate() error {
