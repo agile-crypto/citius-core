@@ -7,7 +7,9 @@ import (
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
+	"github.com/agile-crypto/citius-core/provider"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // templateListPolicy is allowAllPolicy with an allowed_templates list; nil
@@ -99,4 +101,62 @@ func TestCreateKey_scopeSelectionReturnsUnexpectedRegistryErrors(t *testing.T) {
 
 	_, err := createByScope(f, migrateTargetInstance)
 	requireCoreErrorCode(t, err, errors.CodeInternal)
+}
+
+// describedBackend is a namedBackend that advertises templates and reports
+// implementation properties, so the real provider registry can match it.
+type describedBackend struct {
+	namedBackend
+	algorithms []string
+	props      *types.ImplementationProperties
+}
+
+func (b *describedBackend) SupportedAlgorithms() []string { return b.algorithms }
+func (b *describedBackend) ImplementationProperties() *types.ImplementationProperties {
+	return b.props
+}
+
+// TestCreateKey_scopeSelectionAppliesProviderRequirementsWithoutAPin runs
+// selection over the real provider registry with no pinned provider: a
+// template the policy lists first is skipped when only a provider failing
+// the request's requirements implements it.
+func TestCreateKey_scopeSelectionAppliesProviderRequirementsWithoutAPin(t *testing.T) {
+	const opensslOnly = "aaa-openssl-only"
+	f := newMigrateFixture(t)
+	f.templates.templates[opensslOnly] = ecdsaTemplate(opensslOnly, types.EllipticCurve_ELLIPTIC_CURVE_P384, false)
+	registry := provider.NewRegistry()
+	for _, b := range []*describedBackend{
+		{
+			namedBackend: namedBackend{name: "software", typ: "software"},
+			algorithms:   []string{f.template.TemplateID()},
+			props:        &types.ImplementationProperties{MemorySafeLanguage: proto.Bool(true)},
+		},
+		{
+			namedBackend: namedBackend{name: "openssl", typ: "openssl"},
+			algorithms:   []string{opensslOnly, f.template.TemplateID()},
+			props:        &types.ImplementationProperties{HardwareAccelerated: proto.Bool(true)},
+		},
+	} {
+		require.NoError(t, registry.Register(context.Background(), b))
+	}
+	o, err := NewKeyOrchestrator(f.repo, f.templates, registry, templateListPolicy{allowed: []string{opensslOnly, f.template.TemplateID()}})
+	require.NoError(t, err)
+
+	create := func(name string, reqs core.ProviderRequirements) *KeyMetadata {
+		md, err := o.CreateKey(context.Background(), core.KeyCreationSpec{
+			Name:                 name,
+			PolicyID:             transformPolicyID,
+			ScopeSpecification:   &core.ScopeSpecification{Scope: core.ScopeSignatureStandard},
+			ProviderRequirements: reqs,
+		})
+		require.NoError(t, err)
+		return md
+	}
+	md := create("unconstrained", core.ProviderRequirements{})
+	require.Equal(t, opensslOnly, md.TemplateID, "with no requirement, policy order decides")
+	require.Equal(t, "openssl", md.Provider)
+
+	md = create("memory-safe", core.ProviderRequirements{MemorySafe: true})
+	require.Equal(t, f.template.TemplateID(), md.TemplateID, "only openssl, which is not memory-safe, implements %s", opensslOnly)
+	require.Equal(t, "software", md.Provider)
 }
