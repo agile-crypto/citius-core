@@ -79,8 +79,9 @@ type MigrationResult struct {
 // For REKEY_AND_ARCHIVE the archived material is the previous version of the
 // same key, still on the source instance, so ArchivedKeyInfo names the key
 // itself; callers address the archived material with that name and
-// SourceVersion. ArchivedKeyInfo.allowed_operations is left empty: the
-// previous version is not restricted beyond what the key's policy allows.
+// SourceVersion. Sign and Encrypt always use the current version, so the
+// archived version only serves Verify and Decrypt calls that name it.
+// ArchivedKeyInfo.allowed_operations is left empty.
 func (m *MigrationResult) ToProto(ctx context.Context) (*messagespb.MigrateKeyResponse, error) {
 	const op = "service.(MigrationResult).ToProto"
 	if m == nil {
@@ -242,5 +243,6 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 		}
 	}
 	return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
-		"no instance of provider %q supports template %q", spec.TargetProviderID, tmpl.TemplateID())
+		"no instance of provider %q other than %q supports template %q with the key's security requirements",
+		spec.TargetProviderID, sourceInstance, tmpl.TemplateID())
 }
