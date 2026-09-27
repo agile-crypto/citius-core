@@ -7,6 +7,7 @@ import (
 	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
 	"github.com/stretchr/testify/require"
 
+	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/provider"
 )
@@ -135,4 +136,28 @@ func TestValidateMigration_errors(t *testing.T) {
 			requireCoreErrorCode(t, err, tt.wantCode)
 		})
 	}
+}
+
+// denyCreatePolicy is allowAllPolicy denying create_key, which authorizes a
+// migration.
+type denyCreatePolicy struct{ allowAllPolicy }
+
+func (denyCreatePolicy) ValidateOperation(ctx context.Context, _ string, _ core.Operation, _, _ string) error {
+	return errors.New(ctx, "fake.ValidateOperation", errors.CodePolicyViolation, "create_key is denied")
+}
+
+func TestMigration_policyDenial(t *testing.T) {
+	ctx := context.Background()
+	f := newMigrateFixture(t)
+	f.withPolicy(t, denyCreatePolicy{})
+	spec := MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategySwitch}
+
+	_, err := f.orchestrator.MigrateKey(ctx, spec)
+	requireCoreErrorCode(t, err, errors.CodePolicyViolation)
+	require.Zero(t, f.repo.addVersionCalls)
+
+	v, err := f.orchestrator.ValidateMigration(ctx, spec)
+	require.NoError(t, err, "a policy denial is a reason, not an error")
+	require.False(t, v.Options[0].Feasible)
+	require.Equal(t, "create_key is denied", v.Options[0].Reason)
 }
