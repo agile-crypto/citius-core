@@ -411,7 +411,6 @@ func newMigrateFixture(t *testing.T) *migrateFixture {
 			migrateTargetInstance: {tmpl.TemplateID(): true},
 			migrateFIPSInstance:   {tmpl.TemplateID(): true},
 		},
-		fips: map[string]bool{migrateFIPSInstance: true},
 	}
 
 	o, err := NewKeyOrchestrator(repo, templates, providers, allowAllPolicy{})
@@ -420,13 +419,13 @@ func newMigrateFixture(t *testing.T) *migrateFixture {
 }
 
 // multiProviderRegistry holds several named instances, listed in order. Its
-// Match honours only a pin, template support and FIPS 140 certification, and
-// records every request.
+// Match honours only a pin, template support and the provider requirements
+// (judged by provider.Meets, from each instance's implementation
+// properties), and records every request.
 type multiProviderRegistry struct {
 	order     []string
 	backends  map[string]*namedBackend
 	supported map[string]map[string]bool
-	fips      map[string]bool
 	matched   []provider.Requirements
 	matchErr  error // when set, every Match fails with it
 }
@@ -465,9 +464,9 @@ func (r *multiProviderRegistry) Match(ctx context.Context, req provider.Requirem
 		return nil, errors.New(ctx, "fake.Match", errors.CodeProviderNotFound,
 			"provider %q does not support template %q", req.ProviderName, req.TemplateID)
 	}
-	if (req.Implementation.FIPS140Certified || req.Implementation.ApprovedGeneration) && !r.fips[req.ProviderName] {
+	if !provider.Meets(b, req.Implementation) {
 		return nil, errors.New(ctx, "fake.Match", errors.CodeFailedPrecondition,
-			"provider %q is not FIPS 140 certified", req.ProviderName)
+			"provider %q does not meet the provider requirements", req.ProviderName)
 	}
 	return b, nil
 }

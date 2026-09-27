@@ -8,6 +8,7 @@ import (
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // providerRulePolicy is allowAllPolicy with a provider_requirements rule.
@@ -25,6 +26,7 @@ var fipsRule = providerRulePolicy{requirements: core.ProviderRequirements{FIPS14
 func TestCreateKey_mergesRequestAndPolicyProviderRequirements(t *testing.T) {
 	f := newMigrateFixture(t)
 	f.withPolicy(t, fipsRule)
+	f.backends[migrateFIPSInstance].implementation.MemorySafeLanguage = proto.Bool(true)
 
 	md, err := f.orchestrator.CreateKey(context.Background(), core.KeyCreationSpec{
 		Name:                 "created",
