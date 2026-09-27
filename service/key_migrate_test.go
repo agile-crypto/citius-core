@@ -194,6 +194,12 @@ func TestMigrateKey_rejectsBeforeSideEffects(t *testing.T) {
 			wantCode: errors.CodeNotImplemented,
 		},
 		{
+			name:     "unknown strategy",
+			spec:     MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: 99},
+			wantCode: errors.CodeInvalidArgument,
+			wantErr:  "unknown migration strategy",
+		},
+		{
 			name:     "unknown key",
 			spec:     MigrateKeySpec{KeyName: "nope", TargetInstanceID: migrateTargetInstance, Strategy: strategySwitch},
 			wantCode: errors.CodeNotFound,

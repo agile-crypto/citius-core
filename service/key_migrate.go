@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
@@ -236,6 +237,8 @@ func validateMigrateKeySpec(ctx context.Context, spec MigrateKeySpec) error {
 	switch {
 	case spec.Strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED:
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "migration strategy is required")
+	case !slices.Contains(migrationStrategies, spec.Strategy):
+		return errors.New(ctx, op, errors.CodeInvalidArgument, "unknown migration strategy %s", spec.Strategy)
 	case !migrationImplemented(spec.Strategy):
 		return errors.New(ctx, op, errors.CodeNotImplemented,
 			"migration strategy %s is not implemented", spec.Strategy)
