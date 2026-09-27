@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"testing"
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
@@ -393,7 +395,8 @@ func (r *fakeKeyRepository) AddVersion(_ context.Context, v *key.Version, _ ...k
 
 func (r *fakeKeyRepository) DeleteKey(context.Context, string) error { return nil }
 
-// fakeTemplateRegistry selects the single requested candidate by ID.
+// fakeTemplateRegistry selects the first candidate it holds, ignoring the
+// scope, and lists its templates in ID order.
 type fakeTemplateRegistry struct {
 	templates map[string]*template.Template
 }
@@ -408,13 +411,22 @@ func (r *fakeTemplateRegistry) Get(ctx context.Context, id string) (*template.Te
 	return tmpl, nil
 }
 
-func (r *fakeTemplateRegistry) List(context.Context) []*template.Template { return nil }
+func (r *fakeTemplateRegistry) List(context.Context) []*template.Template {
+	ids := slices.Sorted(maps.Keys(r.templates))
+	out := make([]*template.Template, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, r.templates[id])
+	}
+	return out
+}
 
 func (r *fakeTemplateRegistry) Select(ctx context.Context, _ *core.ScopeSpecification, c template.CandidateSet) (*template.Template, error) {
-	if len(c.IDs()) != 1 {
-		return nil, errors.New(ctx, "fake.Select", errors.CodeTemplateNotFound, "explicit template required")
+	for _, id := range c.IDs() {
+		if tmpl, ok := r.templates[id]; ok {
+			return tmpl, nil
+		}
 	}
-	return r.Get(ctx, c.IDs()[0])
+	return nil, errors.New(ctx, "fake.Select", errors.CodeTemplateNotFound, "no candidate template")
 }
 
 // fakeProviderRegistry matches one pinned backend for supported templates.

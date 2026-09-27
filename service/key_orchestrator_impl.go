@@ -62,9 +62,13 @@ func NewKeyOrchestrator(
 	}, nil
 }
 
-// If templateID is non-empty, pickTemplate returns the template with that ID if it matches the scope spec.
-// If templateID is empty, pickTemplate returns the single best template matching the scope spec and allowed by policy.
-func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, templateID string, scopeSpec *core.ScopeSpecification) (*template.Template, error) {
+// If templateID is non-empty, pickTemplate returns the template with that ID if it matches the scope spec;
+// provider matching later reports whether a provider meeting custody implements it.
+// If templateID is empty, pickTemplate returns the first template, in the policy's allowed_templates order
+// (catalog order when no policy applies), that matches the scope spec and that a provider meeting custody
+// (its pinned instance, if any, and provider requirements) implements. A template no such provider can
+// serve is never chosen, however early the policy lists it.
+func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, templateID string, scopeSpec *core.ScopeSpecification, custody provider.Requirements) (*template.Template, error) {
 	const op = "service.(keyOrchestrator).pickTemplate"
 	if templateID != "" {
 		candidates := template.OnlyTemplates(templateID)
@@ -83,26 +87,38 @@ func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, tem
 		return tmpl, nil
 	} else {
 		// Scope-based path: parse the proto-encoded ScopeSpecification,
-		// query policy for allowed templates, then ask the registry to select.
+		// query policy for allowed templates, keep those a provider meeting
+		// custody implements, then ask the registry to select.
 		allowed, err := r.policy.AllowedTemplates(ctx, policyID, scopeSpec)
 		if err != nil {
 			return nil, errors.Wrap(ctx, op, err)
 		}
-
-		var candidates template.CandidateSet
 		if allowed == nil {
 			// nil means bypass (no policy in the system) - all templates eligible.
-			candidates = template.AllTemplates()
-		} else {
-			candidates = template.OnlyTemplates(allowed...)
+			for _, t := range r.templates.List(ctx) {
+				allowed = append(allowed, t.TemplateID())
+			}
 		}
 
-		tmpl, err := r.templates.Select(ctx, scopeSpec, candidates)
+		tmpl, err := r.templates.Select(ctx, scopeSpec, template.OnlyTemplates(r.servable(ctx, allowed, custody)...))
 		if err != nil {
 			return nil, errors.Wrap(ctx, op, err)
 		}
 		return tmpl, nil
 	}
+}
+
+// servable returns, in order, the template IDs in ids that a provider meeting
+// custody implements.
+func (r *keyOrchestrator) servable(ctx context.Context, ids []string, custody provider.Requirements) []string {
+	var out []string
+	for _, id := range ids {
+		custody.TemplateID = id
+		if _, err := r.providers.Match(ctx, custody); err == nil {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpec) (*KeyMetadata, error) {
 	const op errors.Op = "service.(keyOrchestrator).CreateKey"
@@ -133,7 +149,7 @@ func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpe
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	tmpl, versionSpec, err := r.pickVersionTemplate(ctx, req.PolicyID, req.TemplateID, req.ScopeSpecification)
+	tmpl, versionSpec, err := r.pickVersionTemplate(ctx, req.PolicyID, req.TemplateID, req.ScopeSpecification, custody)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -166,14 +182,15 @@ func (r *keyOrchestrator) custody(ctx context.Context, policyID, pinned string, 
 	return provider.Requirements{ProviderName: pinned, Implementation: requested.Merge(fromPolicy)}, nil
 }
 
-// pickVersionTemplate selects the template for a new key version and returns
-// it with the scope specification to store on that version.
-func (r *keyOrchestrator) pickVersionTemplate(ctx context.Context, policyID, templateID string, spec *core.ScopeSpecification) (*template.Template, *core.ScopeSpecification, error) {
+// pickVersionTemplate selects the template for a new key version, among
+// those a provider meeting custody implements, and returns it with the scope
+// specification to store on that version.
+func (r *keyOrchestrator) pickVersionTemplate(ctx context.Context, policyID, templateID string, spec *core.ScopeSpecification, custody provider.Requirements) (*template.Template, *core.ScopeSpecification, error) {
 	const op = "service.(keyOrchestrator).pickVersionTemplate"
 	if err := validateRequestedDigestHashes(ctx, spec); err != nil {
 		return nil, nil, errors.Wrap(ctx, op, err)
 	}
-	tmpl, err := r.pickTemplate(ctx, policyID, templateID, spec)
+	tmpl, err := r.pickTemplate(ctx, policyID, templateID, spec, custody)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, op, err)
 	}
@@ -504,17 +521,15 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 	}
 
 	// Select or validate a template using the same scope and property filtering
-	// as CreateKey.
-	targetTemplate, versionSpec, err := r.pickVersionTemplate(ctx, keyO.PolicyId, spec.TemplateID, spec.ScopeSpecification)
+	// as CreateKey. TransformKey changes the algorithm while retaining custody;
+	// MigrateKey is responsible for moving a key between providers. So only
+	// templates the current provider implements, meeting the policy's provider
+	// requirements, are candidates, and the current provider is pinned.
+	custody, err := r.custody(ctx, keyO.GetPolicyId(), lastVersion.GetProviderId(), core.ProviderRequirements{})
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-
-	// TransformKey changes the algorithm while retaining custody. MigrateKey is
-	// responsible for moving a key between providers, so pin the current provider
-	// while validating its template support and the policy's provider
-	// requirements.
-	custody, err := r.custody(ctx, keyO.GetPolicyId(), lastVersion.GetProviderId(), core.ProviderRequirements{})
+	targetTemplate, versionSpec, err := r.pickVersionTemplate(ctx, keyO.PolicyId, spec.TemplateID, spec.ScopeSpecification, custody)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
