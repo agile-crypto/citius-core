@@ -7,6 +7,7 @@ import (
 	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
+	storepb "github.com/agile-crypto/citius-core/store"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -155,6 +156,14 @@ func TestTransformKey_approvedGenerationNeedsAnApprovedLineageToRetainMaterial(t
 		})
 		if lineage {
 			require.NoError(t, err)
+			retained := f.repo.versions[2]
+			require.True(t, retained.GetApprovedLineage(), "retained on an approved module, the lineage stays approved")
+			require.Equal(t, &storepb.KeyOrigin{
+				Kind:             storepb.KeyOriginKind_KEY_ORIGIN_KIND_RETAINED,
+				SourceVersion:    1,
+				SourceProviderId: migrateFIPSInstance,
+				Channel:          storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD,
+			}, retained.GetOrigin())
 			continue
 		}
 		requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
