@@ -27,6 +27,7 @@ func TestSatisfies(t *testing.T) {
 		"constant time":             {ConstantTime: true},
 		"side-channel hardened":     {SideChannelHardened: true},
 		"no known CVE":              {NoKnownCVE: true},
+		"approved generation":       {ApprovedGeneration: true},
 	}
 	for name, required := range requirements {
 		t.Run(name, func(t *testing.T) {

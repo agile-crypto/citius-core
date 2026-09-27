@@ -75,11 +75,12 @@ func TestProviderRequirementsFromProto_rejectsWhatItCannotEnforce(t *testing.T) 
 
 func TestProviderRequirements_Merge(t *testing.T) {
 	request := core.ProviderRequirements{MemorySafe: true, MinFIPS140Level: 1, PreferHardwareAccelerated: true}
-	policy := core.ProviderRequirements{FIPS140Certified: true, MinFIPS140Level: 3}
+	policy := core.ProviderRequirements{FIPS140Certified: true, MinFIPS140Level: 3, ApprovedGeneration: true}
 	want := core.ProviderRequirements{
 		FIPS140Certified:          true,
 		MinFIPS140Level:           3,
 		MemorySafe:                true,
+		ApprovedGeneration:        true,
 		PreferHardwareAccelerated: true,
 	}
 	if got := request.Merge(policy); got != want {

@@ -20,6 +20,13 @@ const MaxFIPS140Level = 4
 // certification. PreferHardwareAccelerated ranks hardware-accelerated
 // providers first but excludes none.
 //
+// ApprovedGeneration requires more than the provider: the version's material
+// must have been generated in a FIPS 140 validated module and held only by
+// validated modules since. Of a provider it requires FIPS 140 certification;
+// the orchestrator checks the material's lineage when it keeps existing
+// material. Only a policy sets it: a lineage constraint must outlive
+// creation.
+//
 // The zero value requires nothing.
 type ProviderRequirements struct {
 	FIPS140Certified          bool
@@ -30,6 +37,7 @@ type ProviderRequirements struct {
 	ConstantTime              bool
 	SideChannelHardened       bool
 	NoKnownCVE                bool
+	ApprovedGeneration        bool
 	PreferHardwareAccelerated bool
 }
 
@@ -51,6 +59,7 @@ func (r ProviderRequirements) Merge(o ProviderRequirements) ProviderRequirements
 		ConstantTime:              r.ConstantTime || o.ConstantTime,
 		SideChannelHardened:       r.SideChannelHardened || o.SideChannelHardened,
 		NoKnownCVE:                r.NoKnownCVE || o.NoKnownCVE,
+		ApprovedGeneration:        r.ApprovedGeneration || o.ApprovedGeneration,
 		PreferHardwareAccelerated: r.PreferHardwareAccelerated || o.PreferHardwareAccelerated,
 	}
 }

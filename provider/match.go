@@ -35,6 +35,9 @@ func satisfies(props *types.ImplementationProperties, required core.ProviderRequ
 		{required.ConstantTime, props.GetConstantTime()},
 		{required.SideChannelHardened, props.GetSideChannelHardened()},
 		{required.NoKnownCVE, props.GetNoKnownCve() && len(props.GetUnpatchedCves()) == 0},
+		// Material generated or held here keeps an approved lineage only in a
+		// validated module.
+		{required.ApprovedGeneration, fips.GetCertified()},
 	}
 	for _, c := range checks {
 		if c.required && !c.met {
