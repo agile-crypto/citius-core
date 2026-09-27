@@ -6,6 +6,7 @@
 //   - ImportKeySpec            - cross-aggregate DTO for ImportKey
 //   - Primitive, Scope          - typed enums for cryptographic primitives and scope variants
 //   - ScopeSpec                - (Primitive, Scope) pair for template selection
+//   - ProviderRequirements     - provider properties a key requires, for provider selection
 //   - KeyMaterial              - raw key bytes container
 //   - VetForWriter             - pre-write validation interface
 //   - NewID(prefix)            - prefixed ULID generator
