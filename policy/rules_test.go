@@ -2,6 +2,8 @@ package policy
 
 import (
 	"testing"
+
+	core "github.com/agile-crypto/citius-core"
 )
 
 // ============================================================================
@@ -221,5 +223,79 @@ func TestValidate_versionOnlyNoSections_ok(t *testing.T) {
 	}
 	if err := rules.Validate(); err != nil {
 		t.Errorf("Validate version-only: %v", err)
+	}
+}
+
+// ============================================================================
+// provider_requirements
+// ============================================================================
+
+func TestParseRules_providerRequirements(t *testing.T) {
+	rules, err := ParseRules([]byte(`{
+		"version": "1",
+		"provider_requirements": {
+			"fips_140_certified": true,
+			"min_fips_level": 2,
+			"common_criteria_certified": true,
+			"formally_verified": true,
+			"memory_safe": true,
+			"constant_time": true,
+			"side_channel_hardened": true,
+			"no_known_cve": true
+		}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseRules: %v", err)
+	}
+	want := core.ProviderRequirements{
+		FIPS140Certified:        true,
+		MinFIPS140Level:         2,
+		CommonCriteriaCertified: true,
+		FormallyVerified:        true,
+		MemorySafe:              true,
+		ConstantTime:            true,
+		SideChannelHardened:     true,
+		NoKnownCVE:              true,
+	}
+	if got := rules.ProviderRequirements.Requirements(); got != want {
+		t.Errorf("Requirements = %+v, want %+v", got, want)
+	}
+}
+
+func TestParseRules_providerRequirements_rejectsUnknownAndMistypedFields(t *testing.T) {
+	for name, section := range map[string]string{
+		"misspelt requirement": `{"fips140_certified": true}`,
+		"preference":           `{"prefer_hardware_accelerated": true}`,
+		"level as enum name":   `{"min_fips_level": "FIPS_140_LEVEL_3"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := ParseRules([]byte(`{"version": "1", "provider_requirements": ` + section + `}`))
+			if err == nil {
+				t.Fatal("ParseRules: expected an error, a requirement that cannot be read must not be ignored")
+			}
+		})
+	}
+}
+
+func TestProviderRequirementRule_nilRequiresNothing(t *testing.T) {
+	var rule *ProviderRequirementRule
+	if got := rule.Requirements(); !got.IsZero() {
+		t.Errorf("Requirements = %+v, want zero", got)
+	}
+}
+
+func TestValidate_providerRequirements(t *testing.T) {
+	for level := range uint32(core.MaxFIPS140Level + 1) {
+		rules := &Rules{Version: "1", ProviderRequirements: &ProviderRequirementRule{MinFIPS140Level: level}}
+		if err := rules.Validate(); err != nil {
+			t.Errorf("Validate min_fips_level %d: %v", level, err)
+		}
+	}
+	rules := &Rules{Version: "1", ProviderRequirements: &ProviderRequirementRule{MinFIPS140Level: core.MaxFIPS140Level + 1}}
+	if err := rules.Validate(); err == nil {
+		t.Error("Validate: expected an error for min_fips_level above 4")
+	}
+	if err := (&Rules{ProviderRequirements: &ProviderRequirementRule{}}).Validate(); err == nil {
+		t.Error("Validate: expected an error, version is required when provider_requirements is present")
 	}
 }

@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -19,6 +20,7 @@ type Rules struct {
 	AllowedTransformations *TransformationRule      `json:"allowed_transformations,omitempty"` // TODO
 	AllowedMigrations      *MigrationRule           `json:"allowed_migrations,omitempty"`      // TODO
 	SecurityRequirements   *SecurityRequirementRule `json:"security_requirements,omitempty"`
+	ProviderRequirements   *ProviderRequirementRule `json:"provider_requirements,omitempty"`
 }
 
 // --- sub-types (validated + evaluated) ---
@@ -36,6 +38,55 @@ type SecurityRequirementRule struct {
 	QuantumSafe             *bool   `json:"quantum_safe,omitempty"`    // TODO
 	MinNistStatus           *string `json:"min_nist_status,omitempty"` // TODO
 	BlockDeprecated         *bool   `json:"block_deprecated,omitempty"`
+}
+
+// ProviderRequirementRule sets the provider properties every key under the
+// policy requires, whenever a key version is placed on a provider: at
+// CreateKey, TransformKey and MigrateKey. Like SecurityRequirements it is a
+// constraint, not an allowlist: absent means no requirement. A request may
+// add requirements but cannot relax these. Field meanings follow
+// core.ProviderRequirements; min_fips_level is a level from 1 to 4. The
+// section holds requirements only: a preference such as
+// prefer_hardware_accelerated belongs on the request.
+//
+// Unlike the rest of the rules, unknown fields in this section are an error:
+// a requirement this code cannot read cannot be enforced, and must not be
+// ignored.
+type ProviderRequirementRule struct {
+	FIPS140Certified        bool   `json:"fips_140_certified,omitempty"`
+	MinFIPS140Level         uint32 `json:"min_fips_level,omitempty"`
+	CommonCriteriaCertified bool   `json:"common_criteria_certified,omitempty"`
+	FormallyVerified        bool   `json:"formally_verified,omitempty"`
+	MemorySafe              bool   `json:"memory_safe,omitempty"`
+	ConstantTime            bool   `json:"constant_time,omitempty"`
+	SideChannelHardened     bool   `json:"side_channel_hardened,omitempty"`
+	NoKnownCVE              bool   `json:"no_known_cve,omitempty"`
+}
+
+// UnmarshalJSON decodes the section, rejecting unknown fields.
+func (r *ProviderRequirementRule) UnmarshalJSON(data []byte) error {
+	type plain ProviderRequirementRule
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	return dec.Decode((*plain)(r))
+}
+
+// Requirements returns the rule as core.ProviderRequirements. A nil rule
+// requires nothing.
+func (r *ProviderRequirementRule) Requirements() core.ProviderRequirements {
+	if r == nil {
+		return core.ProviderRequirements{}
+	}
+	return core.ProviderRequirements{
+		FIPS140Certified:        r.FIPS140Certified,
+		MinFIPS140Level:         r.MinFIPS140Level,
+		CommonCriteriaCertified: r.CommonCriteriaCertified,
+		FormallyVerified:        r.FormallyVerified,
+		MemorySafe:              r.MemorySafe,
+		ConstantTime:            r.ConstantTime,
+		SideChannelHardened:     r.SideChannelHardened,
+		NoKnownCVE:              r.NoKnownCVE,
+	}
 }
 
 // --- TODO: sub-types (parsed for forward compat, not validated for now) ---
@@ -163,6 +214,12 @@ func (r *Rules) Validate() error {
 	// Bool fields (*bool) need no string validation. Presence implies the constraint.
 	// MinNistStatus and MinSecurityStrengthBits are TODO — skip validation.
 
+	// --- provider_requirements ---
+	if pr := r.ProviderRequirements; pr != nil && pr.MinFIPS140Level > core.MaxFIPS140Level {
+		return fmt.Errorf("provider_requirements.min_fips_level: %d is not a level from 1 to %d",
+			pr.MinFIPS140Level, core.MaxFIPS140Level)
+	}
+
 	return nil
 }
 
@@ -175,5 +232,6 @@ func (r *Rules) hasAnySections() bool {
 		r.KeyConfiguration != nil ||
 		r.AllowedTransformations != nil ||
 		r.AllowedMigrations != nil ||
-		r.SecurityRequirements != nil
+		r.SecurityRequirements != nil ||
+		r.ProviderRequirements != nil
 }
