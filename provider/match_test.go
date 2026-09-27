@@ -354,7 +354,7 @@ func TestRegistry_Match_fipsRequired_flipsSelectionToFIPSInstance(t *testing.T) 
 		t.Fatalf("Register openssl-fips: %v", err)
 	}
 
-	// No security requirement: registration order wins, same as before.
+	// No provider requirement: registration order wins, same as before.
 	got, err := r.Match(t.Context(), provider.Requirements{TemplateID: "aes-256-gcm-128-96"})
 	if err != nil {
 		t.Fatalf("Match (no requirement): %v", err)
@@ -437,5 +437,62 @@ func TestRegistry_Match_providerRequirements_unsatisfiable(t *testing.T) {
 		Implementation: core.ProviderRequirements{MemorySafe: true}})
 	if !errors.IsFailedPrecondition(err) {
 		t.Errorf("Match (pin contradicts a requirement): error = %v, want failed precondition", err)
+	}
+}
+
+// TestRegistry_Match_onlyRequestedPropertiesRank proves nothing but a
+// requirement or a preference moves selection off registration order: an
+// unrequested FIPS certification or hardware acceleration does not.
+func TestRegistry_Match_onlyRequestedPropertiesRank(t *testing.T) {
+	r := provider.NewRegistry()
+	for _, p := range []*describingProvider{
+		{
+			capableProvider: capableProvider{name: "software", algorithms: []string{"aes-256-gcm-128-96"}},
+			props:           &types.ImplementationProperties{MemorySafeLanguage: proto.Bool(true)},
+		},
+		{
+			capableProvider: capableProvider{name: "openssl", algorithms: []string{"aes-256-gcm-128-96"}},
+			props:           &types.ImplementationProperties{HardwareAccelerated: proto.Bool(true)},
+		},
+		{
+			capableProvider: capableProvider{name: "openssl-fips", algorithms: []string{"aes-256-gcm-128-96"}},
+			props: &types.ImplementationProperties{
+				Fips_140:            &types.Fips140Certification{Certified: true, Level: types.Fips140Level_FIPS_140_LEVEL_1},
+				HardwareAccelerated: proto.Bool(true),
+			},
+		},
+	} {
+		if err := r.Register(t.Context(), p); err != nil {
+			t.Fatalf("Register %s: %v", p.Name(), err)
+		}
+	}
+
+	tests := []struct {
+		name     string
+		required core.ProviderRequirements
+		want     string
+	}{
+		{"no requirement", core.ProviderRequirements{}, "software"},
+		{"preference ties go to registration order", core.ProviderRequirements{PreferHardwareAccelerated: true}, "openssl"},
+		{"a preference nobody meets falls back to the first match", core.ProviderRequirements{MemorySafe: true, PreferHardwareAccelerated: true}, "software"},
+		{"FIPS 140 certified", core.ProviderRequirements{FIPS140Certified: true}, "openssl-fips"},
+		{"FIPS 140 level met", core.ProviderRequirements{MinFIPS140Level: 1}, "openssl-fips"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := r.Match(t.Context(), provider.Requirements{TemplateID: "aes-256-gcm-128-96", Implementation: tt.required})
+			if err != nil {
+				t.Fatalf("Match: %v", err)
+			}
+			if got.Name() != tt.want {
+				t.Errorf("Match = %q, want %q", got.Name(), tt.want)
+			}
+		})
+	}
+
+	_, err := r.Match(t.Context(), provider.Requirements{TemplateID: "aes-256-gcm-128-96",
+		Implementation: core.ProviderRequirements{MinFIPS140Level: 2}})
+	if !errors.IsProviderNotFound(err) {
+		t.Errorf("Match (FIPS 140 level 2): error = %v, want provider not found", err)
 	}
 }

@@ -141,7 +141,8 @@ type AlgorithmCapabilityProvider interface {
 //
 // Optional, same as AlgorithmCapabilityProvider: a provider that does not
 // implement it is not excluded from matching — it simply cannot substantiate
-// any of these properties, so it scores neutral rather than being penalised.
+// any of these properties, so it meets no provider requirement and has no
+// preferred property, but still serves requests that require nothing.
 // A provider must only report what it can actually substantiate; do not
 // fabricate certificate numbers or validation dates a real audit would
 // contradict.

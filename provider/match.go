@@ -5,73 +5,21 @@ import (
 	core "github.com/agile-crypto/citius-core"
 )
 
-// score computes a provider's match score against required, in two distinct
-// steps:
-//
-//  1. Hard filter (the returned bool): a provider that does not meet every
-//     requirement in required is eliminated outright (see satisfies). When
-//     required has no hard requirement, every provider passes regardless of
-//     what it can report.
-//  2. Soft score (the returned int) ranks survivors against each other. The
-//     weights are a judgement call, not a derived truth: FIPS certification
-//     (+2) outweighs the rest because it is the strongest
-//     externally-auditable signal available; constant-time (+1),
-//     hardware-accelerated (+1), and memory-safe language (+1) are weighted
-//     equally as independent, non-competing quality signals with no
-//     comparable external certification behind them. A provider with no
-//     ImplementationDescriber — props is then nil — or one that reports
-//     nothing scores 0: neutral, not penalised, per
-//     ImplementationDescriber's own doc comment. A provider with a property
-//     the caller prefers adds preferenceWeight, so a preference outranks the
-//     other signals but never overrides a requirement.
-//
-// props is nil for a provider that does not implement
-// ImplementationDescriber; every accessor below is a nil-safe proto getter,
-// so a nil props reports every property as unset rather than panicking.
-//
-// This is a pure function — no registry, no provider — specifically so it
-// stays table-testable on its own. Ranking a template's full candidate set
-// and breaking ties by registration order is a caller's job, not this
-// function's.
-func score(props *types.ImplementationProperties, required core.ProviderRequirements) (int, bool) {
-	if !satisfies(props, required) {
-		return 0, false
-	}
-
-	s := 0
-	if props.GetFips_140().GetCertified() {
-		s += 2
-	}
-	if props.GetConstantTime() {
-		s++
-	}
-	if props.GetHardwareAccelerated() {
-		s++
-	}
-	if props.GetMemorySafeLanguage() {
-		s++
-	}
-	if required.PreferHardwareAccelerated && props.GetHardwareAccelerated() {
-		s += preferenceWeight
-	}
-	return s, true
-}
-
-// scoreProvider extracts p's ImplementationProperties — nil if p does not
-// implement ImplementationDescriber — and scores them against required.
-// The one place Registry.Match needs to know about ImplementationDescriber
-// at all; score itself stays independent of Backend.
-func scoreProvider(p Backend, required core.ProviderRequirements) (int, bool) {
-	var props *types.ImplementationProperties
+// implementationProperties returns p's ImplementationProperties, or nil if p
+// does not implement ImplementationDescriber. Every accessor on the result is
+// a nil-safe proto getter, so nil reports every property as unset.
+func implementationProperties(p Backend) *types.ImplementationProperties {
 	if id, ok := p.(ImplementationDescriber); ok {
-		props = id.ImplementationProperties()
+		return id.ImplementationProperties()
 	}
-	return score(props, required)
+	return nil
 }
 
-// preferenceWeight outranks every soft signal of score combined (at most 5),
-// so a provider with a preferred property always ranks above one without.
-const preferenceWeight = 6
+// prefers reports whether props have a property required prefers. A
+// preference ranks providers; it never excludes one.
+func prefers(props *types.ImplementationProperties, required core.ProviderRequirements) bool {
+	return required.PreferHardwareAccelerated && props.GetHardwareAccelerated()
+}
 
 // satisfies reports whether props meet every hard requirement in required.
 // A property the provider does not report, including every property of a

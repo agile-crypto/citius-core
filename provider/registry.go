@@ -161,20 +161,15 @@ func (r *registry) Remove(ctx context.Context, name string) error {
 //
 // If req.ProviderName is set, that exact provider is used: verified to
 // advertise req.TemplateID and meet req.Implementation, but never silently
-// substituted for another provider if it does not. A caller that pinned a provider gets that provider or an
-// error, not a surprise fallback.
+// substituted for another provider if it does not. A caller that pinned a
+// provider gets that provider or an error, not a surprise fallback.
 //
-// Otherwise, with req.Implementation zero (the template-only case — Requirements{TemplateID: id} with nothing else set),
-// the first provider registered under req.TemplateID wins outright, matching
-// the original first-match scan this replaced: no ranking happens on
-// properties nobody asked about.
-//
-// Otherwise every provider indexed under req.TemplateID is scored (see
-// scoreProvider in match.go) instead: a provider that fails a hard filter is
-// excluded, and the highest-scoring survivor wins. Ties
-// are broken by registration order — names is byTemplate's insertion-ordered
-// slice, and only a strictly-greater score replaces the current best, so
-// among equal scores the first-registered provider wins here too.
+// Otherwise, among the providers registered under req.TemplateID that meet
+// req.Implementation (see satisfies in match.go), the first-registered one
+// with a property req.Implementation prefers wins, or failing that the
+// first-registered one. Nothing else ranks providers, so with no requirement
+// the first-registered provider wins, as in the first-match scan this
+// replaced.
 func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error) {
 	const op errors.Op = "provider.(Registry).Match"
 	r.mu.RLock()
@@ -190,7 +185,7 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 			return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
 				"provider "+req.ProviderName+" does not support template: "+req.TemplateID)
 		}
-		if _, ok := scoreProvider(p, req.Implementation); !ok {
+		if !satisfies(implementationProperties(p), req.Implementation) {
 			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
 				"provider "+req.ProviderName+" does not meet the provider requirements")
 		}
@@ -207,27 +202,25 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 			"no provider supports template: "+req.TemplateID)
 	}
 
-	if req.Implementation.IsZero() {
-		return r.providers[names[0]], nil
-	}
-
-	best := ""
-	bestScore := -1
+	var chosen Backend
 	for _, name := range names {
-		s, ok := scoreProvider(r.providers[name], req.Implementation)
-		if !ok {
+		p := r.providers[name]
+		props := implementationProperties(p)
+		if !satisfies(props, req.Implementation) {
 			continue
 		}
-		if s > bestScore {
-			bestScore = s
-			best = name
+		if prefers(props, req.Implementation) {
+			return p, nil
+		}
+		if chosen == nil {
+			chosen = p
 		}
 	}
-	if best == "" {
+	if chosen == nil {
 		return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
 			"no provider meets the provider requirements for template: "+req.TemplateID)
 	}
-	return r.providers[best], nil
+	return chosen, nil
 }
 
 // advertisesTemplate reports whether p declares templateID via
