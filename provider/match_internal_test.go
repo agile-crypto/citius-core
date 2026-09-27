@@ -15,17 +15,16 @@ func fipsCertified() *types.ImplementationProperties {
 }
 
 func TestScore_hardFilter(t *testing.T) {
-	fipsRequired := &core.SecurityProperties{FipsApproved: true}
+	fipsRequired := core.ProviderRequirements{FIPS140Certified: true}
 
 	tests := []struct {
 		name     string
 		props    *types.ImplementationProperties
-		required *core.SecurityProperties
+		required core.ProviderRequirements
 		wantOK   bool
 	}{
-		{"no requirement, no props", nil, nil, true},
-		{"no requirement, FIPS props", fipsCertified(), nil, true},
-		{"requirement not FIPS, no props", nil, &core.SecurityProperties{}, true},
+		{"no requirement, no props", nil, core.ProviderRequirements{}, true},
+		{"no requirement, FIPS props", fipsCertified(), core.ProviderRequirements{}, true},
 		{"FIPS required, no props at all (no ImplementationDescriber)", nil, fipsRequired, false},
 		{"FIPS required, props present but not FIPS-certified", &types.ImplementationProperties{}, fipsRequired, false},
 		{"FIPS required, Fips_140 present but Certified false", &types.ImplementationProperties{Fips_140: &types.Fips140Certification{Certified: false}}, fipsRequired, false},
@@ -99,19 +98,20 @@ func TestScore_softScore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := score(tt.props, nil)
+			got, ok := score(tt.props, core.ProviderRequirements{})
 			if !ok {
-				t.Fatalf("score(%+v, nil): ok = false, want true (no hard requirement)", tt.props)
+				t.Fatalf("score(%+v): ok = false, want true (no hard requirement)", tt.props)
 			}
 			if got != tt.want {
-				t.Errorf("score(%+v, nil) = %d, want %d", tt.props, got, tt.want)
+				t.Errorf("score(%+v) = %d, want %d", tt.props, got, tt.want)
 			}
 		})
 	}
 }
 
 // TestScore_openSSLFIPSOutranksDefaultMode is the scenario the plan's B5
-// item exists to prove end-to-end: when FIPS is required, the FIPS-mode
+// item exists to prove end-to-end: when FIPS 140 certification is required,
+// the FIPS-mode
 // instance must outscore (and, via the hard filter, be the only survivor
 // among) an otherwise-identical default-mode instance.
 func TestScore_openSSLFIPSOutranksDefaultMode(t *testing.T) {
@@ -120,7 +120,7 @@ func TestScore_openSSLFIPSOutranksDefaultMode(t *testing.T) {
 		Fips_140:            &types.Fips140Certification{Certified: true},
 		HardwareAccelerated: proto.Bool(true),
 	}
-	required := &core.SecurityProperties{FipsApproved: true}
+	required := core.ProviderRequirements{FIPS140Certified: true}
 
 	if _, ok := score(defaultMode, required); ok {
 		t.Error("default-mode instance: expected hard filter to reject when FIPS is required")
@@ -206,5 +206,21 @@ func TestSatisfies_noKnownCVE_rejectsListedCVEs(t *testing.T) {
 	props := &types.ImplementationProperties{NoKnownCve: proto.Bool(true), UnpatchedCves: []string{"CVE-2026-0001"}}
 	if satisfies(props, core.ProviderRequirements{NoKnownCVE: true}) {
 		t.Error("a provider listing an unpatched CVE must not satisfy no_known_cve, whatever its flag says")
+	}
+}
+
+func TestScore_preferenceOutranksEverySoftSignal(t *testing.T) {
+	prefer := core.ProviderRequirements{PreferHardwareAccelerated: true}
+	everythingButAcceleration := &types.ImplementationProperties{
+		Fips_140:           &types.Fips140Certification{Certified: true},
+		ConstantTime:       proto.Bool(true),
+		MemorySafeLanguage: proto.Bool(true),
+	}
+	onlyAcceleration := &types.ImplementationProperties{HardwareAccelerated: proto.Bool(true)}
+
+	other, _ := score(everythingButAcceleration, prefer)
+	preferred, _ := score(onlyAcceleration, prefer)
+	if preferred <= other {
+		t.Errorf("preferred provider scores %d, not above %d", preferred, other)
 	}
 }

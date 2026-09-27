@@ -9,8 +9,9 @@ import (
 )
 
 // Requirements narrows a Match call to a template, optionally a specific
-// pinned provider, optionally required security properties, and the
-// provider requirements the chosen provider must meet.
+// pinned provider, and the provider requirements the chosen provider must
+// meet. Only these choose a provider: the security properties of a scope
+// specification describe the algorithm and select templates, not providers.
 //
 // There is deliberately no Capability field: app.ValidateProviderCapabilities
 // (internal/app/validate.go) already makes "provider P advertises template T
@@ -19,7 +20,6 @@ import (
 type Requirements struct {
 	TemplateID     string
 	ProviderName   string
-	Security       *core.SecurityProperties
 	Implementation core.ProviderRequirements
 }
 
@@ -160,13 +160,11 @@ func (r *registry) Remove(ctx context.Context, name string) error {
 // Match resolves the Backend that should serve req.
 //
 // If req.ProviderName is set, that exact provider is used: verified to
-// advertise req.TemplateID and pass the hard filters of req.Security and
-// req.Implementation, but never silently substituted for another provider
-// if it does not. A caller that pinned a provider gets that provider or an
+// advertise req.TemplateID and meet req.Implementation, but never silently
+// substituted for another provider if it does not. A caller that pinned a provider gets that provider or an
 // error, not a surprise fallback.
 //
-// Otherwise, with req.Security nil and req.Implementation zero (the
-// template-only case — Requirements{TemplateID: id} with nothing else set),
+// Otherwise, with req.Implementation zero (the template-only case — Requirements{TemplateID: id} with nothing else set),
 // the first provider registered under req.TemplateID wins outright, matching
 // the original first-match scan this replaced: no ranking happens on
 // properties nobody asked about.
@@ -192,9 +190,9 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 			return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
 				"provider "+req.ProviderName+" does not support template: "+req.TemplateID)
 		}
-		if _, ok := scoreProvider(p, req); !ok {
+		if _, ok := scoreProvider(p, req.Implementation); !ok {
 			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
-				"provider "+req.ProviderName+" does not satisfy the required security properties or provider requirements")
+				"provider "+req.ProviderName+" does not meet the provider requirements")
 		}
 		return p, nil
 	}
@@ -209,14 +207,14 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 			"no provider supports template: "+req.TemplateID)
 	}
 
-	if req.Security == nil && req.Implementation.IsZero() {
+	if req.Implementation.IsZero() {
 		return r.providers[names[0]], nil
 	}
 
 	best := ""
 	bestScore := -1
 	for _, name := range names {
-		s, ok := scoreProvider(r.providers[name], req)
+		s, ok := scoreProvider(r.providers[name], req.Implementation)
 		if !ok {
 			continue
 		}
@@ -227,7 +225,7 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 	}
 	if best == "" {
 		return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
-			"no provider satisfies the required security properties or provider requirements for template: "+req.TemplateID)
+			"no provider meets the provider requirements for template: "+req.TemplateID)
 	}
 	return r.providers[best], nil
 }

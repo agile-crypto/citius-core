@@ -315,9 +315,9 @@ func TestRegistry_Match_pinnedProvider_failsHardFilter_errors(t *testing.T) {
 	_ = r.Register(t.Context(), nonFIPS)
 
 	_, err := r.Match(t.Context(), provider.Requirements{
-		TemplateID:   "aes-256-gcm-128-96",
-		ProviderName: "software",
-		Security:     &core.SecurityProperties{FipsApproved: true},
+		TemplateID:     "aes-256-gcm-128-96",
+		ProviderName:   "software",
+		Implementation: core.ProviderRequirements{FIPS140Certified: true},
 	})
 	if err == nil {
 		t.Fatal("expected error: pinned provider cannot substantiate FIPS, must not silently succeed anyway")
@@ -330,8 +330,8 @@ func TestRegistry_Match_pinnedProvider_failsHardFilter_errors(t *testing.T) {
 // TestRegistry_Match_fipsRequired_flipsSelectionToFIPSInstance is the
 // scenario this whole matching mechanism exists for: software is registered
 // first (as wire.go does) and would win a plain first-match scan, but when
-// the caller requires FIPS, only the FIPS-mode instance can serve — and it
-// must win even though it registered second.
+// the caller requires FIPS 140 certification, only the FIPS-mode instance
+// can serve — and it must win even though it registered second.
 func TestRegistry_Match_fipsRequired_flipsSelectionToFIPSInstance(t *testing.T) {
 	r := provider.NewRegistry()
 
@@ -365,8 +365,8 @@ func TestRegistry_Match_fipsRequired_flipsSelectionToFIPSInstance(t *testing.T) 
 
 	// FIPS required: selection flips to the second-registered FIPS instance.
 	got, err = r.Match(t.Context(), provider.Requirements{
-		TemplateID: "aes-256-gcm-128-96",
-		Security:   &core.SecurityProperties{FipsApproved: true},
+		TemplateID:     "aes-256-gcm-128-96",
+		Implementation: core.ProviderRequirements{FIPS140Certified: true},
 	})
 	if err != nil {
 		t.Fatalf("Match (FIPS required): %v", err)

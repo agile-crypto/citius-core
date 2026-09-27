@@ -88,3 +88,24 @@ func TestMigrateKey_enforcesPolicyProviderRequirements(t *testing.T) {
 	require.Equal(t, migrateFIPSInstance, res.TargetInstanceID,
 		"a provider-type target must skip instances that do not meet the policy")
 }
+
+// TestCreateKey_scopeFIPSApprovalDoesNotChooseTheProvider records decision
+// DT-027: a scope's fips_approved selects FIPS-approved algorithms only;
+// only a provider requirement forces a FIPS 140 certified provider.
+func TestCreateKey_scopeFIPSApprovalDoesNotChooseTheProvider(t *testing.T) {
+	f := newMigrateFixture(t)
+
+	md, err := f.orchestrator.CreateKey(context.Background(), core.KeyCreationSpec{
+		Name:       "created",
+		TemplateID: f.template.TemplateID(),
+		PolicyID:   transformPolicyID,
+		ScopeSpecification: &core.ScopeSpecification{
+			Scope:         core.ScopeSignatureStandard,
+			SecurityProps: &core.SecurityProperties{FipsApproved: true},
+		},
+		ProviderInstanceID: migrateTargetInstance,
+	})
+	require.NoError(t, err)
+	require.Equal(t, migrateTargetInstance, md.Provider)
+	require.True(t, f.providers.matched[len(f.providers.matched)-1].Implementation.IsZero())
+}

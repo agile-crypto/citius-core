@@ -280,11 +280,10 @@ func (r *keyOrchestrator) generateAndPersistKey(
 	custody provider.Requirements,
 ) (*KeyMetadata, error) {
 	// 1. Find a provider that supports this template — honouring an explicit
-	// provider_id pin, the provider requirements of the request and policy,
-	// and the scope's security requirements (e.g. FIPS), rather than just the
-	// first provider that advertises the template.
+	// provider_id pin and the provider requirements of the request and
+	// policy, rather than just the first provider that advertises the
+	// template.
 	custody.TemplateID = tmpl.TemplateID()
-	custody.Security = scopeSpec.SecurityProps
 	prov, err := r.providers.Match(ctx, custody)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -513,14 +512,13 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 
 	// TransformKey changes the algorithm while retaining custody. MigrateKey is
 	// responsible for moving a key between providers, so pin the current provider
-	// while validating its template support, the policy's provider requirements
-	// and the requested security properties.
+	// while validating its template support and the policy's provider
+	// requirements.
 	custody, err := r.custody(ctx, keyO.GetPolicyId(), lastVersion.GetProviderId(), core.ProviderRequirements{})
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	custody.TemplateID = targetTemplate.TemplateID()
-	custody.Security = spec.ScopeSpecification.SecurityProps
 	provider, err := r.providers.Match(ctx, custody)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
