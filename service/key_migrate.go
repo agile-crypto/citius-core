@@ -8,6 +8,7 @@ import (
 
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
+	"github.com/agile-crypto/citius-core/key"
 	"github.com/agile-crypto/citius-core/provider"
 	storepb "github.com/agile-crypto/citius-core/store"
 	"github.com/agile-crypto/citius-core/template"
@@ -22,8 +23,9 @@ import (
 //
 // Supported strategies:
 //   - MIGRATION_STRATEGY_PROVIDER_SWITCH copies the stored key payload
-//     byte-for-byte to the target provider. Both providers must read the
-//     same key encoding, which holds for the in-process software providers.
+//     byte-for-byte to the target provider. The version must be extractable,
+//     its source instance registered, and the payload's encoding one the
+//     source releases and the target accepts as a stored payload.
 //   - MIGRATION_STRATEGY_REKEY_AND_ARCHIVE generates new material on the
 //     target provider. The previous version stays on the source provider, so
 //     data it protects can still be decrypted or verified.
@@ -142,13 +144,13 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	sourceInstance := lastVersion.GetProviderId()
-	target, err := r.migrationTarget(ctx, spec, keyO.GetPolicyId(), sourceInstance, tmpl)
+	source, err := r.migrationSource(ctx, sourceInstance)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	if target.Name() == sourceInstance {
-		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
-			"key %q is already on provider instance %q", spec.KeyName, sourceInstance)
+	target, err := r.migrationTarget(ctx, spec, keyO.GetPolicyId(), lastVersion, source, tmpl)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
 	}
 
 	// A migration is authorized if creating the same key on the target
@@ -181,7 +183,7 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		Key:               md,
 		Strategy:          spec.Strategy,
 		KeyBytesPreserved: preserve,
-		SourceProviderID:  r.providerType(ctx, sourceInstance),
+		SourceProviderID:  backendType(source),
 		SourceInstanceID:  sourceInstance,
 		SourceVersion:     lastVersion.GetVersion(),
 		TargetProviderID:  target.Type(),
@@ -211,34 +213,67 @@ func validateMigrateKeySpec(ctx context.Context, spec MigrateKeySpec) error {
 	}
 }
 
-// providerType returns the type of the named provider instance, or "" when
-// it is no longer registered. The source of a migration need not be
-// registered: its stored payload is all a provider switch needs.
-func (r *keyOrchestrator) providerType(ctx context.Context, instance string) string {
+// migrationSource returns the provider instance a key's current version is
+// on, or nil when that instance is no longer registered. A rekey needs
+// nothing from the source; every transfer strategy needs it to vouch for
+// the material.
+func (r *keyOrchestrator) migrationSource(ctx context.Context, instance string) (provider.Backend, error) {
+	const op = "service.(keyOrchestrator).migrationSource"
 	b, err := r.providers.Get(ctx, instance)
-	if err != nil {
+	switch {
+	case err == nil:
+		return b, nil
+	case errors.IsProviderNotFound(err):
+		return nil, nil
+	default:
+		return nil, errors.Wrap(ctx, op, err)
+	}
+}
+
+// backendType returns b's provider type, or "" for nil.
+func backendType(b provider.Backend) string {
+	if b == nil {
 		return ""
 	}
 	return b.Type()
 }
 
-// migrationTarget resolves the provider instance a key migrates to. The
-// target must support the key's template and meet its policy's provider
-// requirements. A provider-type target never resolves to sourceInstance.
-func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySpec, policyID, sourceInstance string, tmpl *template.Template) (provider.Backend, error) {
+// migrationTarget resolves the provider instance version migrates to with
+// spec.Strategy. The target must support the key's template, meet its
+// policy's provider requirements, and, with source, carry out the strategy
+// (see transferFeasibility). It is never version's own instance.
+//
+// A provider-type target resolves to the first instance of that type that
+// qualifies. An instance is passed over only when it does not; any other
+// error stops the search.
+func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySpec, policyID string,
+	version *key.Version, source provider.Backend, tmpl *template.Template) (provider.Backend, error) {
 	const op = "service.(keyOrchestrator).migrationTarget"
+	sourceInstance := version.GetProviderId()
+	if spec.TargetInstanceID == sourceInstance {
+		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"key is already on provider instance %q", sourceInstance)
+	}
 	custody, err := r.custody(ctx, policyID, "", core.ProviderRequirements{})
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	custody.TemplateID = tmpl.TemplateID()
-	match := func(name string) (provider.Backend, error) {
+	candidate := func(name string) (provider.Backend, error) {
 		pinned := custody
 		pinned.ProviderName = name
-		return r.providers.Match(ctx, pinned)
+		target, err := r.providers.Match(ctx, pinned)
+		if err != nil {
+			return nil, err
+		}
+		if ok, reason := transferFeasibility(spec.Strategy, source, target, version, tmpl); !ok {
+			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+				"%s to provider instance %q is not possible: %s", spec.Strategy, name, reason)
+		}
+		return target, nil
 	}
 	if spec.TargetInstanceID != "" {
-		target, err := match(spec.TargetInstanceID)
+		target, err := candidate(spec.TargetInstanceID)
 		if err != nil {
 			return nil, errors.Wrap(ctx, op, err)
 		}
@@ -248,11 +283,17 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 		if b.Type() != spec.TargetProviderID || b.Name() == sourceInstance {
 			continue
 		}
-		if target, err := match(b.Name()); err == nil {
+		target, err := candidate(b.Name())
+		switch {
+		case err == nil:
 			return target, nil
+		case errors.IsProviderNotFound(err), errors.IsFailedPrecondition(err):
+			continue
+		default:
+			return nil, errors.Wrap(ctx, op, err)
 		}
 	}
 	return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
-		"no instance of provider %q other than %q supports template %q and meets the policy's provider requirements",
-		spec.TargetProviderID, sourceInstance, tmpl.TemplateID())
+		"no instance of provider %q other than %q supports template %q, meets the policy's provider requirements and can receive the key with %s",
+		spec.TargetProviderID, sourceInstance, tmpl.TemplateID(), spec.Strategy)
 }

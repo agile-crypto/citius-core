@@ -131,6 +131,29 @@ func TestMigrateKey_providerTypeSkipsSourceInstance(t *testing.T) {
 	require.Equal(t, uint32(2), res.SourceVersion)
 }
 
+func TestMigrateKey_providerTypeSkipsInstancesThatCannotReceive(t *testing.T) {
+	f := newMigrateFixture(t)
+	f.backends[migrateTargetInstance].transfer = provider.Transfer{}
+
+	res, err := f.orchestrator.MigrateKey(context.Background(), MigrateKeySpec{
+		KeyName: transformKeyName, TargetProviderID: "openssl", Strategy: strategySwitch,
+	})
+	require.NoError(t, err)
+	require.Equal(t, migrateFIPSInstance, res.TargetInstanceID)
+}
+
+func TestMigrateKey_rekeyFromAnUnregisteredSource(t *testing.T) {
+	f := newMigrateFixture(t)
+	delete(f.providers.backends, migrateSourceInstance)
+
+	res, err := f.orchestrator.MigrateKey(context.Background(), MigrateKeySpec{
+		KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategyArchive,
+	})
+	require.NoError(t, err)
+	require.Empty(t, res.SourceProviderID)
+	require.Equal(t, migrateSourceInstance, res.SourceInstanceID)
+}
+
 func TestMigrateKey_rejectsBeforeSideEffects(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -207,7 +230,62 @@ func TestMigrateKey_rejectsBeforeSideEffects(t *testing.T) {
 				f.repo.versions[1].KeyMaterial = []byte{0xff}
 			},
 			wantCode: errors.CodeFailedPrecondition,
-			wantErr:  "stored key payload",
+			wantErr:  "does not record the encoding",
+		},
+		{
+			name: "source instance no longer registered",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategySwitch},
+			mutate: func(f *migrateFixture) {
+				delete(f.providers.backends, migrateSourceInstance)
+			},
+			wantCode: errors.CodeFailedPrecondition,
+			wantErr:  "is not registered",
+		},
+		{
+			name: "non-extractable version",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategySwitch},
+			mutate: func(f *migrateFixture) {
+				f.repo.versions[1].Extractable = false
+			},
+			wantCode: errors.CodeFailedPrecondition,
+			wantErr:  "is not extractable",
+		},
+		{
+			name: "target module at FIPS 140 level 3",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateFIPSInstance, Strategy: strategySwitch},
+			mutate: func(f *migrateFixture) {
+				f.backends[migrateFIPSInstance].implementation.Fips_140.Level = types.Fips140Level_FIPS_140_LEVEL_3
+			},
+			wantCode: errors.CodeFailedPrecondition,
+			wantErr:  `"openssl-fips" does not accept`,
+		},
+		{
+			name: "target module reporting no FIPS 140 level",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateFIPSInstance, Strategy: strategySwitch},
+			mutate: func(f *migrateFixture) {
+				f.backends[migrateFIPSInstance].implementation.Fips_140.Level = types.Fips140Level_FIPS_140_LEVEL_UNSPECIFIED
+			},
+			wantCode: errors.CodeFailedPrecondition,
+			wantErr:  `"openssl-fips" does not accept`,
+		},
+		{
+			name: "no instance of the provider type can receive the payload",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetProviderID: "openssl", Strategy: strategySwitch},
+			mutate: func(f *migrateFixture) {
+				f.backends[migrateTargetInstance].transfer = provider.Transfer{}
+				f.backends[migrateFIPSInstance].transfer = provider.Transfer{}
+			},
+			wantCode: errors.CodeProviderNotFound,
+			wantErr:  "can receive the key with MIGRATION_STRATEGY_PROVIDER_SWITCH",
+		},
+		{
+			name: "provider-type search stops on an unexpected error",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetProviderID: "openssl", Strategy: strategyArchive},
+			mutate: func(f *migrateFixture) {
+				f.providers.matchErr = errors.New(context.Background(), "fake.Match", errors.CodeInternal, "registry unavailable")
+			},
+			wantCode: errors.CodeInternal,
+			wantErr:  "registry unavailable",
 		},
 	}
 
@@ -291,9 +369,10 @@ func newMigrateFixture(t *testing.T) *migrateFixture {
 	tmpl := ecdsaTemplate("ecdsa-p256", types.EllipticCurve_ELLIPTIC_CURVE_P256, false)
 
 	stored, err := proto.Marshal(&providerpb.GenerateKeyResponse{
-		KeyMaterial:    []byte("source-private"),
-		PublicKeyBytes: []byte("source-public"),
-		Output:         provider.NoOutput("raw"),
+		KeyMaterial:         []byte("source-private"),
+		KeyMaterialEncoding: providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_SEC1,
+		PublicKeyBytes:      []byte("source-public"),
+		Output:              provider.NoOutput("raw"),
 	})
 	require.NoError(t, err)
 
@@ -304,15 +383,16 @@ func newMigrateFixture(t *testing.T) *migrateFixture {
 	v, err := key.NewVersion(ctx, computeVersionID(transformKeyID, 1), transformKeyID,
 		tmpl.TemplateID(), migrateSourceInstance, 1, stored,
 		&core.ScopeSpecification{Scope: core.ScopeSignatureStandard},
-		key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
+		key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE),
+		key.WithProvenance(key.Provenance{Extractable: true}))
 	require.NoError(t, err)
 
 	repo := &fakeKeyRepository{key: k, versions: map[uint32]*key.Version{1: v}}
 	templates := &fakeTemplateRegistry{templates: map[string]*template.Template{tmpl.TemplateID(): tmpl}}
 	backends := map[string]*namedBackend{
-		migrateSourceInstance: {name: migrateSourceInstance, typ: "software"},
-		migrateTargetInstance: {name: migrateTargetInstance, typ: "openssl"},
-		migrateFIPSInstance:   {name: migrateFIPSInstance, typ: "openssl"},
+		migrateSourceInstance: {name: migrateSourceInstance, typ: "software", transfer: sec1StoredPayload},
+		migrateTargetInstance: {name: migrateTargetInstance, typ: "openssl", transfer: sec1StoredPayload},
+		migrateFIPSInstance:   {name: migrateFIPSInstance, typ: "openssl", transfer: sec1StoredPayload, implementation: fipsLevel1()},
 	}
 	providers := &multiProviderRegistry{
 		order:    []string{migrateSourceInstance, migrateTargetInstance, migrateFIPSInstance},
