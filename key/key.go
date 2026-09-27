@@ -128,8 +128,8 @@ func (k *Key) CanPerformReceivingCrypto() error {
 	}
 }
 
-// TODO: CanExport deferred — requires `bool extractable` field to be added to
-// StoredKey in key.proto. Will be implemented when key export support is added.
+// TODO: CanExport deferred until key export is supported (DT-039). Whether a
+// version's material may leave its provider is its KeyVersion.extractable.
 
 // CanDelete returns an error if the key cannot be deleted.
 // Terminal keys (DESTROYED, DESTROYED_COMPROMISED) are already gone.
