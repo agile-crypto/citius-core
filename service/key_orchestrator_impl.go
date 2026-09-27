@@ -613,7 +613,7 @@ func (r *keyOrchestrator) validateTransformOp(ctx context.Context, keyName strin
 	const op = "service.(keyOrchestrator).validateTransformOp"
 	// Policy: validate that create_key with this template is permitted.
 	if err := r.policy.ValidateOperation(ctx, policyID,
-		core.OperationCreateKey, template.TemplateID(), ""); err != nil {
+		core.OperationCreateKey, template.TemplateID(), provider.Name()); err != nil {
 		return errors.Wrap(ctx, op, err)
 	}
 	// Policy: validate key configuration constraints (extractable, rotation, etc.)
