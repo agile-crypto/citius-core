@@ -220,16 +220,15 @@ func (r *keyOrchestrator) providerType(ctx context.Context, instance string) str
 // requirements. A provider-type target never resolves to sourceInstance.
 func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySpec, policyID, sourceInstance string, tmpl *template.Template) (provider.Backend, error) {
 	const op = "service.(keyOrchestrator).migrationTarget"
-	fromPolicy, err := r.policy.ProviderRequirements(ctx, policyID)
+	custody, err := r.custody(ctx, policyID, "", core.ProviderRequirements{})
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
+	custody.TemplateID = tmpl.TemplateID()
 	match := func(name string) (provider.Backend, error) {
-		return r.providers.Match(ctx, provider.Requirements{
-			TemplateID:     tmpl.TemplateID(),
-			ProviderName:   name,
-			Implementation: fromPolicy,
-		})
+		pinned := custody
+		pinned.ProviderName = name
+		return r.providers.Match(ctx, pinned)
 	}
 	if spec.TargetInstanceID != "" {
 		target, err := match(spec.TargetInstanceID)
