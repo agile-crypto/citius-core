@@ -202,7 +202,7 @@ func TestTransformKey_retainKeyBytesRejectsBeforeSideEffects(t *testing.T) {
 				f.repo.versions[1].KeyMaterial = []byte{0xff}
 			},
 			wantCode: errors.CodeFailedPrecondition,
-			wantErr:  "stored key payload",
+			wantErr:  "does not parse",
 		},
 	}
 
@@ -282,9 +282,10 @@ func newTransformFixture(t *testing.T, primitive core.Primitive, sourceScope cor
 	ctx := context.Background()
 
 	stored, err := proto.Marshal(&providerpb.GenerateKeyResponse{
-		KeyMaterial:    []byte("source-private"),
-		PublicKeyBytes: []byte("source-public"),
-		Output:         provider.NoOutput("raw"),
+		KeyMaterial:         []byte("source-private"),
+		KeyMaterialEncoding: providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_RAW,
+		PublicKeyBytes:      []byte("source-public"),
+		Output:              provider.NoOutput("raw"),
 	})
 	require.NoError(t, err)
 
@@ -472,6 +473,17 @@ type countingBackend struct {
 }
 
 func (b *countingBackend) Name() string { return transformProviderID }
+
+// TransferCapabilities accepts stored material in every encoding, for any
+// algorithm, so that transforms may retain it.
+func (b *countingBackend) TransferCapabilities(*types.AlgorithmDetails) provider.Transfer {
+	all := []providerpb.PrivateKeyEncoding{
+		providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_PKCS8,
+		providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_SEC1,
+		providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_RAW,
+	}
+	return provider.Transfer{Accept: provider.Channels{StoredPayload: all}}
+}
 func (b *countingBackend) Type() string { return "fake" }
 
 func (b *countingBackend) GenerateKey(context.Context, *providerpb.GenerateKeyRequest) (*providerpb.GenerateKeyResponse, error) {
@@ -507,4 +519,36 @@ func (allowAllPolicy) AllowedTemplates(context.Context, string, *core.ScopeSpeci
 
 func (allowAllPolicy) ProviderRequirements(context.Context, string) (core.ProviderRequirements, error) {
 	return core.ProviderRequirements{}, nil
+}
+
+func TestTransformKey_retainNeedsTheProviderToAcceptTheStoredMaterial(t *testing.T) {
+	tests := []struct {
+		name           string
+		transfer       provider.Transfer
+		implementation *types.ImplementationProperties
+		wantErr        string
+	}{
+		{"provider that accepts no stored material", provider.Transfer{}, nil, `"openssl-fips" does not accept PRIVATE_KEY_ENCODING_SEC1`},
+		{"module at FIPS 140 level 3", sec1StoredPayload, &types.ImplementationProperties{Fips_140: &types.Fips140Certification{
+			Certified: true, Level: types.Fips140Level_FIPS_140_LEVEL_3,
+		}}, `"openssl-fips" does not accept PRIVATE_KEY_ENCODING_SEC1`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newMigrateFixture(t)
+			f.repo.versions[1].ProviderId = migrateFIPSInstance
+			f.backends[migrateFIPSInstance].transfer = tt.transfer
+			f.backends[migrateFIPSInstance].implementation = tt.implementation
+
+			_, err := f.orchestrator.TransformKey(context.Background(), TransformKeySpec{
+				KeyName:            transformKeyName,
+				TemplateID:         f.template.TemplateID(),
+				ScopeSpecification: &core.ScopeSpecification{Scope: core.ScopeSignatureStandard},
+				RetainBytes:        true,
+			})
+			requireCoreErrorCode(t, err, errors.CodeFailedPrecondition)
+			require.ErrorContains(t, err, tt.wantErr)
+			require.Zero(t, f.repo.addVersionCalls)
+		})
+	}
 }

@@ -577,7 +577,8 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 
 // transformProvenance is the provenance of the version a transform creates
 // on prov for tmpl: that of lastVersion's material when retaining it, which
-// custody may refuse (see requireKeptLineage), else that of new material.
+// custody (see requireKeptLineage) or prov (see retainFeasibility) may
+// refuse, else that of new material.
 func transformProvenance(ctx context.Context, custody provider.Requirements, retain bool,
 	lastVersion *key.Version, prov provider.Backend, tmpl *template.Template) (key.Provenance, error) {
 	const op = "service.transformProvenance"
@@ -586,6 +587,9 @@ func transformProvenance(ctx context.Context, custody provider.Requirements, ret
 	}
 	if err := requireKeptLineage(ctx, custody, lastVersion); err != nil {
 		return key.Provenance{}, errors.Wrap(ctx, op, err)
+	}
+	if ok, reason := retainFeasibility(prov, lastVersion, tmpl); !ok {
+		return key.Provenance{}, errors.New(ctx, op, errors.CodeFailedPrecondition, "cannot retain the key's material: %s", reason)
 	}
 	return keptProvenance(lastVersion, prov, tmpl,
 		storepb.KeyOriginKind_KEY_ORIGIN_KIND_RETAINED, storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD), nil

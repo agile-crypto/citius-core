@@ -116,6 +116,24 @@ func targetFeasibility(strategy messagespb.MigrationStrategy, source, target pro
 	return true, ""
 }
 
+// retainFeasibility reports whether prov accepts version's stored material
+// for tmpl, and if not, why. TransformKey retaining material uses the
+// stored-payload channel with prov as both source and target; the material
+// never leaves prov, so only acceptance is checked.
+func retainFeasibility(prov provider.Backend, version *key.Version, tmpl *template.Template) (bool, string) {
+	encoding, err := storedEncoding(version)
+	switch {
+	case err != nil:
+		return false, fmt.Sprintf("the stored material of version %d of the key does not parse", version.GetVersion())
+	case encoding == providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_UNSPECIFIED:
+		return false, fmt.Sprintf("version %d of the key does not record the encoding of its stored material", version.GetVersion())
+	case !slices.Contains(provider.TransferOf(prov, tmpl.GetAlgorithm()).Accept.StoredPayload, encoding):
+		return false, fmt.Sprintf("provider instance %q does not accept %s stored material for template %q",
+			prov.Name(), encoding, tmpl.TemplateID())
+	}
+	return true, ""
+}
+
 // storedEncoding returns the private-key encoding version's stored payload
 // records, or an error when the payload does not parse.
 func storedEncoding(version *key.Version) (providerpb.PrivateKeyEncoding, error) {
