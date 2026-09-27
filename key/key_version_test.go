@@ -51,6 +51,30 @@ func TestKeyVersion_NewVersion(t *testing.T) {
 	}
 }
 
+func TestKeyVersion_NewVersion_provenance(t *testing.T) {
+	ctx := context.Background()
+	scopeSpec := &core.ScopeSpecification{Scope: core.ScopeSignatureStandard}
+
+	v, err := key.NewVersion(ctx, "ver_01HXYZ", "key_01HXYZ", "template_01", "software", 1, []byte("key-material"), scopeSpec)
+	require.NoError(t, err)
+	require.False(t, v.GetExtractable(), "a version is not extractable unless its provenance says so")
+	require.False(t, v.GetApprovedLineage())
+	require.Nil(t, v.GetOrigin())
+
+	origin := &storepb.KeyOrigin{
+		Kind:             storepb.KeyOriginKind_KEY_ORIGIN_KIND_TRANSFERRED,
+		SourceVersion:    1,
+		SourceProviderId: "openssl",
+		Channel:          storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD,
+	}
+	v, err = key.NewVersion(ctx, "ver_01HXYZ", "key_01HXYZ", "template_01", "software", 2, []byte("key-material"), scopeSpec,
+		key.WithProvenance(key.Provenance{Extractable: true, ApprovedLineage: true, Origin: origin}))
+	require.NoError(t, err)
+	require.True(t, v.GetExtractable())
+	require.True(t, v.GetApprovedLineage())
+	require.Equal(t, origin, v.GetOrigin())
+}
+
 func TestKeyVersion_NewVersion_requiresScopeSpecification(t *testing.T) {
 	_, err := key.NewVersion(
 		context.Background(),

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
+	storepb "github.com/agile-crypto/citius-core/store"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -33,6 +34,7 @@ type options struct {
 	withCurrentVersion  uint32
 	withInitialVersion  uint32
 	withVetForWrite     bool
+	withProvenance      Provenance
 }
 
 func getDefaultOptions() options {
@@ -79,6 +81,23 @@ func WithLabels(labels map[string]string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// Provenance is what a version records about its material: whether it may
+// leave its provider, where it came from, and whether it has only ever been
+// generated and held by FIPS 140 validated modules.
+type Provenance struct {
+	Extractable     bool
+	ApprovedLineage bool
+	Origin          *storepb.KeyOrigin
+}
+
+// WithProvenance sets a version's provenance. Without it a version is not
+// extractable, has no approved lineage and records no origin.
+func WithProvenance(p Provenance) Option {
+	return func(o *options) {
+		o.withProvenance = p
 	}
 }
 

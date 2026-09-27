@@ -22,6 +22,8 @@ type Version struct {
 // Available options:
 //   - WithState: sets the State field (defaults to [types.KeyVersionLifecycleState_PRE_ACTIVE] if not provided)
 //   - WithWrappingKeyID: sets the WrappingKeyId field (defaults to empty string if not provided)
+//   - WithProvenance: sets Extractable, ApprovedLineage and Origin (default to
+//     false, false and unset)
 func NewVersion(ctx context.Context, publicID, keyID, templateID, providerID string, version uint32, keyMaterial []byte, scopeSpec *core.ScopeSpecification, opt ...Option) (*Version, error) {
 	const op = "key.newKeyVersion"
 	opts := getOpts(opt...)
@@ -58,6 +60,9 @@ func NewVersion(ctx context.Context, publicID, keyID, templateID, providerID str
 		WrappingKeyId:      opts.withWrappingKeyID,
 		State:              opts.withState,
 		ScopeSpecification: scopeSpecBytes,
+		Extractable:        opts.withProvenance.Extractable,
+		ApprovedLineage:    opts.withProvenance.ApprovedLineage,
+		Origin:             opts.withProvenance.Origin,
 	}
 	return &Version{KeyVersion: kv}, nil
 
