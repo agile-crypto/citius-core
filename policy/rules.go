@@ -47,7 +47,9 @@ type SecurityRequirementRule struct {
 // cannot relax these. Field meanings follow core.ProviderRequirements;
 // min_fips_level is a level from 1 to 4. The section holds requirements
 // only: a preference such as prefer_hardware_accelerated belongs on the
-// request.
+// request. approved_generation requires every version's material to have
+// been generated in, and only ever held by, FIPS 140 validated modules; it
+// exists only here, because a lineage constraint must outlive creation.
 type ProviderRequirementRule struct {
 	FIPS140Certified        bool   `json:"fips_140_certified,omitempty"`
 	MinFIPS140Level         uint32 `json:"min_fips_level,omitempty"`
@@ -57,6 +59,7 @@ type ProviderRequirementRule struct {
 	ConstantTime            bool   `json:"constant_time,omitempty"`
 	SideChannelHardened     bool   `json:"side_channel_hardened,omitempty"`
 	NoKnownCVE              bool   `json:"no_known_cve,omitempty"`
+	ApprovedGeneration      bool   `json:"approved_generation,omitempty"`
 }
 
 // Requirements returns the rule as core.ProviderRequirements. A nil rule
@@ -74,6 +77,7 @@ func (r *ProviderRequirementRule) Requirements() core.ProviderRequirements {
 		ConstantTime:            r.ConstantTime,
 		SideChannelHardened:     r.SideChannelHardened,
 		NoKnownCVE:              r.NoKnownCVE,
+		ApprovedGeneration:      r.ApprovedGeneration,
 	}
 }
 

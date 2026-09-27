@@ -240,7 +240,8 @@ func TestParseRules_providerRequirements(t *testing.T) {
 			"memory_safe": true,
 			"constant_time": true,
 			"side_channel_hardened": true,
-			"no_known_cve": true
+			"no_known_cve": true,
+			"approved_generation": true
 		}
 	}`))
 	if err != nil {
@@ -255,6 +256,7 @@ func TestParseRules_providerRequirements(t *testing.T) {
 		ConstantTime:            true,
 		SideChannelHardened:     true,
 		NoKnownCVE:              true,
+		ApprovedGeneration:      true,
 	}
 	if got := rules.ProviderRequirements.Requirements(); got != want {
 		t.Errorf("Requirements = %+v, want %+v", got, want)
