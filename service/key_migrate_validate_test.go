@@ -42,8 +42,13 @@ func TestValidateMigration_reportsEveryStrategyWithoutSideEffects(t *testing.T) 
 
 	require.Len(t, v.Options, len(migrationStrategies))
 	got := assessments(v)
-	require.Equal(t, StrategyAssessment{Strategy: strategySwitch, Feasible: true, TargetInstanceID: migrateTargetInstance}, got[strategySwitch])
-	require.Equal(t, StrategyAssessment{Strategy: strategyArchive, Feasible: true, TargetInstanceID: migrateTargetInstance}, got[strategyArchive])
+	require.Equal(t, StrategyAssessment{Strategy: strategySwitch, Feasible: true, TargetInstanceID: migrateTargetInstance,
+		SecurityNotes: strategySecurityNotes[strategySwitch]}, got[strategySwitch])
+	require.Equal(t, StrategyAssessment{Strategy: strategyArchive, Feasible: true, TargetInstanceID: migrateTargetInstance,
+		SecurityNotes: strategySecurityNotes[strategyArchive]}, got[strategyArchive])
+	for _, s := range migrationStrategies {
+		require.NotEmpty(t, got[s].SecurityNotes, s)
+	}
 	require.Contains(t, got[messagespb.MigrationStrategy_MIGRATION_STRATEGY_EXTRACT_AND_IMPORT].Reason, `"software" exports no key`)
 	require.Contains(t, got[messagespb.MigrationStrategy_MIGRATION_STRATEGY_WRAPPED_TRANSFER].Reason, `"software" wraps no key`)
 	destroy := got[messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_DESTROY]
@@ -59,6 +64,25 @@ func TestValidateMigration_reportsEveryStrategyWithoutSideEffects(t *testing.T) 
 	require.True(t, resp.GetCurrentState().GetExtractable())
 	require.Len(t, resp.GetOptions(), len(migrationStrategies))
 	require.Equal(t, strategySwitch, resp.GetRecommendedStrategy())
+	require.Equal(t, strategySecurityNotes[strategySwitch], resp.GetOptions()[0].GetSecurityNotes())
+}
+
+func TestRecommendMigration_speaksOnlyOfTheAssessedStrategies(t *testing.T) {
+	archive := StrategyAssessment{Strategy: strategyArchive, Feasible: true}
+	refusedSwitch := StrategyAssessment{Strategy: strategySwitch, Reason: "no"}
+
+	s, reason := recommendMigration([]StrategyAssessment{archive})
+	require.Equal(t, strategyArchive, s)
+	require.NotContains(t, reason, "cannot move", "the switch was not assessed")
+	require.Contains(t, reason, "the public key changes")
+
+	s, reason = recommendMigration([]StrategyAssessment{refusedSwitch, archive})
+	require.Equal(t, strategyArchive, s)
+	require.Contains(t, reason, "cannot move")
+
+	s, reason = recommendMigration([]StrategyAssessment{refusedSwitch})
+	require.Equal(t, messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED, s)
+	require.Equal(t, "none of the assessed strategies can migrate the key to the target", reason)
 }
 
 func TestValidateMigration_recommendsRekeyWhenMaterialCannotMove(t *testing.T) {

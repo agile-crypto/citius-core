@@ -30,6 +30,30 @@ type StrategyAssessment struct {
 	// TargetInstanceID is the instance the key would migrate to. Set only
 	// when the strategy is feasible.
 	TargetInstanceID string
+	// SecurityNotes say what the strategy implies for the key's material
+	// and the data it protects, whether or not it is feasible.
+	SecurityNotes []string
+}
+
+// strategySecurityNotes says what each strategy implies.
+var strategySecurityNotes = map[messagespb.MigrationStrategy][]string{
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH: {
+		"the same material stays in the key's earlier version on the source provider; destroy that version to keep a single copy",
+	},
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_EXTRACT_AND_IMPORT: {
+		"the material leaves the source provider in plaintext",
+	},
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_WRAPPED_TRANSFER: {
+		"the material leaves the source provider only encrypted under a transport key",
+	},
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE: {
+		"new material: the public key changes",
+		"data the current version protects stays usable only through that version, on the source provider",
+	},
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_DESTROY: {
+		"new material: the public key changes",
+		"data the current version protects becomes unusable once it is destroyed",
+	},
 }
 
 // MigrationValidation reports which strategies can migrate a key to a
@@ -52,6 +76,8 @@ type MigrationValidation struct {
 }
 
 // ToProto converts the validation to a ValidateKeyOperationResponse.
+// StrategyOption has no field for the target instance, so
+// StrategyAssessment.TargetInstanceID is not carried.
 func (v *MigrationValidation) ToProto() *messagespb.ValidateKeyOperationResponse {
 	if v == nil {
 		return nil
@@ -72,6 +98,7 @@ func (v *MigrationValidation) ToProto() *messagespb.ValidateKeyOperationResponse
 			Strategy:            o.Strategy,
 			Feasible:            o.Feasible,
 			InfeasibilityReason: o.Reason,
+			SecurityNotes:       o.SecurityNotes,
 		})
 	}
 	return resp
@@ -109,7 +136,7 @@ func (r *keyOrchestrator) ValidateMigration(ctx context.Context, spec MigrateKey
 	}
 	for _, strategy := range strategies {
 		spec.Strategy = strategy
-		o := StrategyAssessment{Strategy: strategy}
+		o := StrategyAssessment{Strategy: strategy, SecurityNotes: strategySecurityNotes[strategy]}
 		target, err := r.checkMigration(ctx, m, spec)
 		switch {
 		case err == nil && !migrationImplemented(strategy):
@@ -130,19 +157,25 @@ func (r *keyOrchestrator) ValidateMigration(ctx context.Context, spec MigrateKey
 // recommendMigration picks the strategy to prefer among the feasible
 // options, and says why.
 func recommendMigration(options []StrategyAssessment) (messagespb.MigrationStrategy, string) {
-	feasible := func(s messagespb.MigrationStrategy) bool {
-		return slices.ContainsFunc(options, func(o StrategyAssessment) bool { return o.Strategy == s && o.Feasible })
+	assessed := func(s messagespb.MigrationStrategy) (StrategyAssessment, bool) {
+		i := slices.IndexFunc(options, func(o StrategyAssessment) bool { return o.Strategy == s })
+		if i < 0 {
+			return StrategyAssessment{}, false
+		}
+		return options[i], true
 	}
-	switch {
-	case feasible(messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH):
-		return messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH,
-			"the key's material moves unchanged, so data it protects needs no re-encryption or re-signing"
-	case feasible(messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE):
-		return messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE,
-			"the key's material cannot move; new material is generated on the target and the current version stays on its provider for data it protects"
-	default:
-		return messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED, "no strategy can migrate the key to the target"
+	sw, swAssessed := assessed(messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH)
+	if sw.Feasible {
+		return sw.Strategy, "the key's material moves unchanged, so data it protects needs no re-encryption or re-signing"
 	}
+	if archive, _ := assessed(messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE); archive.Feasible {
+		reason := "new material is generated on the target, so the public key changes; the current version stays on its provider for data it protects"
+		if swAssessed {
+			reason = "the key's material cannot move unchanged; " + reason
+		}
+		return archive.Strategy, reason
+	}
+	return messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED, "none of the assessed strategies can migrate the key to the target"
 }
 
 // implementationOf returns b's implementation properties, or nil.
