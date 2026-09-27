@@ -115,3 +115,53 @@ func TestAllowedTemplates_scopeSpecIgnored_M1(t *testing.T) {
 		t.Errorf("M1: scopeSpec should not affect results; ids1=%v, ids2=%v", ids1, ids2)
 	}
 }
+
+// ============================================================================
+// ProviderRequirements Tests
+// ============================================================================
+
+func TestProviderRequirements_noPolicy_requiresNothing(t *testing.T) {
+	enforcer, _ := policy.NewEnforcer(newFakeRepository(), policy.NewSimpleRulesEvaluator())
+
+	reqs, err := enforcer.ProviderRequirements(context.Background(), "")
+	require.NoError(t, err)
+	require.True(t, reqs.IsZero(), "no policy must require nothing, got %+v", reqs)
+}
+
+func TestProviderRequirements_absentSection_requiresNothing(t *testing.T) {
+	enforcer := setupWithRulesPolicy(t, "no-provider-rule", &policy.Rules{
+		Version:          "1",
+		AllowedTemplates: []string{"ml-dsa-65"},
+	})
+
+	reqs, err := enforcer.ProviderRequirements(context.Background(), "no-provider-rule")
+	require.NoError(t, err)
+	require.True(t, reqs.IsZero(), "an absent section must require nothing, got %+v", reqs)
+}
+
+func TestProviderRequirements_returnsSection(t *testing.T) {
+	enforcer := setupWithRulesPolicy(t, "fips-only", &policy.Rules{
+		Version:              "1",
+		ProviderRequirements: &policy.ProviderRequirementRule{FIPS140Certified: true, MinFIPS140Level: 1},
+	})
+
+	reqs, err := enforcer.ProviderRequirements(context.Background(), "fips-only")
+	require.NoError(t, err)
+	require.Equal(t, core.ProviderRequirements{FIPS140Certified: true, MinFIPS140Level: 1}, reqs)
+}
+
+func TestProviderRequirements_unknownPolicy_errors(t *testing.T) {
+	enforcer := setupWithRulesPolicy(t, "known", nil)
+
+	_, err := enforcer.ProviderRequirements(context.Background(), "unknown")
+	require.Error(t, err)
+}
+
+func TestCreatePolicy_providerRequirementsLevelOutOfRange_rejected(t *testing.T) {
+	enforcer, _ := policy.NewEnforcer(newFakeRepository(), policy.NewSimpleRulesEvaluator())
+	p := policy.NewPolicy("pol_01HXYZ", "bad-level",
+		[]byte(`{"version":"1","provider_requirements":{"min_fips_level":5}}`))
+
+	_, err := enforcer.CreatePolicy(context.Background(), p)
+	require.Error(t, err)
+}

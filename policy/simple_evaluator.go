@@ -112,3 +112,13 @@ func (e *SimpleRulesEvaluator) AllowedTemplateIDs(rulesJSON []byte) ([]string, e
 	copy(out, rules.AllowedTemplates)
 	return out, nil
 }
+
+// ProviderRequirements returns the provider_requirements section.
+// Absent => no requirement.
+func (e *SimpleRulesEvaluator) ProviderRequirements(rulesJSON []byte) (core.ProviderRequirements, error) {
+	rules, err := ParseRules(rulesJSON)
+	if err != nil {
+		return core.ProviderRequirements{}, err
+	}
+	return rules.ProviderRequirements.Requirements(), nil
+}

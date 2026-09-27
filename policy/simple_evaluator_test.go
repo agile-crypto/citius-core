@@ -270,3 +270,45 @@ func TestSimple_AllowedTemplateIDs_emptySection_emptySlice(t *testing.T) {
 		t.Errorf("expected 0, got %d", len(ids))
 	}
 }
+
+// ============================================================================
+// ProviderRequirements
+// ============================================================================
+
+func TestSimple_ProviderRequirements(t *testing.T) {
+	tests := []struct {
+		name  string
+		rules string
+		want  core.ProviderRequirements
+	}{
+		{"no rules", "", core.ProviderRequirements{}},
+		{"absent section", `{"version":"1","allowed_templates":["ml-dsa-65"]}`, core.ProviderRequirements{}},
+		{"empty section", `{"version":"1","provider_requirements":{}}`, core.ProviderRequirements{}},
+		{"memory safe", `{"version":"1","provider_requirements":{"memory_safe":true}}`, core.ProviderRequirements{MemorySafe: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := newSimple().ProviderRequirements([]byte(tt.rules))
+			if err != nil {
+				t.Fatalf("ProviderRequirements: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("ProviderRequirements = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSimple_ProviderRequirements_unreadableSection_errors(t *testing.T) {
+	_, err := newSimple().ProviderRequirements([]byte(`{"version":"1","provider_requirements":{"fips140":true}}`))
+	if err == nil {
+		t.Fatal("expected an error for a section with an unknown requirement")
+	}
+}
+
+func TestNoop_ProviderRequirements_requiresNothing(t *testing.T) {
+	got, err := NewNoopEvaluator().ProviderRequirements([]byte(`{"provider_requirements":{"memory_safe":true}}`))
+	if err != nil || !got.IsZero() {
+		t.Errorf("ProviderRequirements = %+v, %v; want zero, nil", got, err)
+	}
+}

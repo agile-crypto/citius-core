@@ -485,3 +485,7 @@ func (allowAllPolicy) ValidateKeyCreation(context.Context, string, *core.KeyCrea
 func (allowAllPolicy) AllowedTemplates(context.Context, string, *core.ScopeSpecification) ([]string, error) {
 	return nil, nil
 }
+
+func (allowAllPolicy) ProviderRequirements(context.Context, string) (core.ProviderRequirements, error) {
+	return core.ProviderRequirements{}, nil
+}

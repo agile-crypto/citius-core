@@ -23,6 +23,13 @@ type Evaluator interface {
 	// Deny-by-default: absent section returns an empty non-nil slice (nothing allowed).
 	// Returns nil only when policyName is empty (bypass).
 	AllowedTemplates(ctx context.Context, policyName string, scopeSpec *core.ScopeSpecification) ([]string, error)
+
+	// ProviderRequirements returns the provider requirements the named policy
+	// places on every key under it: the provider instance holding a key
+	// version must meet them when the version is created, transformed or
+	// migrated. A policy without the section, and an empty policyName
+	// (bypass), require nothing.
+	ProviderRequirements(ctx context.Context, policyName string) (core.ProviderRequirements, error)
 }
 
 // EvaluatorFactory builds only the evaluation half of the engine.

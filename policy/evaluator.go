@@ -36,6 +36,11 @@ type RulesEvaluator interface {
 	// Deny-by-default: absent section returns an empty non-nil slice (nothing allowed).
 	// Returns a non-empty slice if the rules explicitly list allowed templates.
 	AllowedTemplateIDs(rulesJSON []byte) ([]string, error)
+
+	// ProviderRequirements returns the provider requirements the rules place
+	// on every key. An absent section requires nothing (a constraint, not an
+	// allowlist).
+	ProviderRequirements(rulesJSON []byte) (core.ProviderRequirements, error)
 }
 
 // TemplateSecurityInfo carries template metadata needed for policy security
@@ -69,5 +74,8 @@ func (*NoopRulesEvaluator) AllowsOperation([]byte, core.Operation) (bool, error)
 func (*NoopRulesEvaluator) AllowsTemplate([]byte, string) (bool, error)                  { return true, nil }
 func (*NoopRulesEvaluator) MeetsSecurityRequirements([]byte, TemplateSecurityInfo) error { return nil }
 func (*NoopRulesEvaluator) AllowedTemplateIDs([]byte) ([]string, error)                  { return nil, nil }
+func (*NoopRulesEvaluator) ProviderRequirements([]byte) (core.ProviderRequirements, error) {
+	return core.ProviderRequirements{}, nil
+}
 
 var _ RulesEvaluator = (*NoopRulesEvaluator)(nil)

@@ -200,5 +200,23 @@ func (r *Enforcer) AllowedTemplates(ctx context.Context, policyName string,
 	return ids, nil
 }
 
+// ProviderRequirements returns the provider requirements of the named
+// policy. Empty policyName => bypass (no requirement).
+func (r *Enforcer) ProviderRequirements(ctx context.Context, policyName string) (core.ProviderRequirements, error) {
+	const op errors.Op = "policy.(Enforcer).ProviderRequirements"
+	if policyName == "" {
+		return core.ProviderRequirements{}, nil
+	}
+	p, err := r.store.GetPolicy(ctx, policyName)
+	if err != nil {
+		return core.ProviderRequirements{}, errors.Wrap(ctx, op, err)
+	}
+	reqs, err := r.evaluator.ProviderRequirements(p.RulesJSON())
+	if err != nil {
+		return core.ProviderRequirements{}, errors.Wrap(ctx, op, err)
+	}
+	return reqs, nil
+}
+
 // Compile-time assertion - TODO: uncomment when all policy.Engine methods are implemented.
 var _ Engine = (*Enforcer)(nil)
