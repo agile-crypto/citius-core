@@ -58,13 +58,49 @@ func score(props *types.ImplementationProperties, required *core.SecurityPropert
 }
 
 // scoreProvider extracts p's ImplementationProperties — nil if p does not
-// implement ImplementationDescriber — and scores them against required.
+// implement ImplementationDescriber — and scores them against req: the
+// scope's security properties, then req.Implementation's hard requirements
+// (see satisfies) and its hardware-acceleration preference.
 // The one place Registry.Match needs to know about ImplementationDescriber
 // at all; score itself stays independent of Backend.
-func scoreProvider(p Backend, required *core.SecurityProperties) (int, bool) {
+func scoreProvider(p Backend, req Requirements) (int, bool) {
 	var props *types.ImplementationProperties
 	if id, ok := p.(ImplementationDescriber); ok {
 		props = id.ImplementationProperties()
 	}
-	return score(props, required)
+	s, ok := score(props, req.Security)
+	if !ok || !satisfies(props, req.Implementation) {
+		return 0, false
+	}
+	if req.Implementation.PreferHardwareAccelerated && props.GetHardwareAccelerated() {
+		s += preferenceWeight
+	}
+	return s, true
+}
+
+// preferenceWeight outranks every soft signal of score combined (at most 5),
+// so a provider with a preferred property always ranks above one without.
+const preferenceWeight = 6
+
+// satisfies reports whether props meet every hard requirement in required.
+// A property the provider does not report, including every property of a
+// provider with nil props, counts as not met: requirements fail closed.
+func satisfies(props *types.ImplementationProperties, required core.ProviderRequirements) bool {
+	fips := props.GetFips_140()
+	checks := []struct{ required, met bool }{
+		{required.FIPS140Certified, fips.GetCertified()},
+		{required.MinFIPS140Level > 0, fips.GetCertified() && int64(fips.GetLevel()) >= int64(required.MinFIPS140Level)},
+		{required.CommonCriteriaCertified, props.GetCommonCriteriaCertified()},
+		{required.FormallyVerified, props.GetFormallyVerified()},
+		{required.MemorySafe, props.GetMemorySafeLanguage()},
+		{required.ConstantTime, props.GetConstantTime()},
+		{required.SideChannelHardened, props.GetSideChannelHardened()},
+		{required.NoKnownCVE, props.GetNoKnownCve() && len(props.GetUnpatchedCves()) == 0},
+	}
+	for _, c := range checks {
+		if c.required && !c.met {
+			return false
+		}
+	}
+	return true
 }

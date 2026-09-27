@@ -375,3 +375,67 @@ func TestRegistry_Match_fipsRequired_flipsSelectionToFIPSInstance(t *testing.T) 
 		t.Errorf("Match (FIPS required): expected %q, got %q", "openssl-fips", got.Name())
 	}
 }
+
+// registerSoftwareAndOpenSSL registers providers shaped like the server's:
+// software (memory-safe, first) and openssl (hardware-accelerated), both
+// advertising aes-256-gcm-128-96.
+func registerSoftwareAndOpenSSL(t *testing.T) provider.Registry {
+	t.Helper()
+	r := provider.NewRegistry()
+	for _, p := range []*describingProvider{
+		{
+			capableProvider: capableProvider{name: "software", algorithms: []string{"aes-256-gcm-128-96"}},
+			props:           &types.ImplementationProperties{MemorySafeLanguage: proto.Bool(true)},
+		},
+		{
+			capableProvider: capableProvider{name: "openssl", algorithms: []string{"aes-256-gcm-128-96"}},
+			props:           &types.ImplementationProperties{HardwareAccelerated: proto.Bool(true)},
+		},
+	} {
+		if err := r.Register(t.Context(), p); err != nil {
+			t.Fatalf("Register %s: %v", p.Name(), err)
+		}
+	}
+	return r
+}
+
+func TestRegistry_Match_providerRequirements(t *testing.T) {
+	r := registerSoftwareAndOpenSSL(t)
+	tests := []struct {
+		name     string
+		required core.ProviderRequirements
+		want     string
+	}{
+		{"none: registration order", core.ProviderRequirements{}, "software"},
+		{"memory safe", core.ProviderRequirements{MemorySafe: true}, "software"},
+		{"prefer hardware acceleration", core.ProviderRequirements{PreferHardwareAccelerated: true}, "openssl"},
+		{"preference cannot override a requirement", core.ProviderRequirements{MemorySafe: true, PreferHardwareAccelerated: true}, "software"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := r.Match(t.Context(), provider.Requirements{TemplateID: "aes-256-gcm-128-96", Implementation: tt.required})
+			if err != nil {
+				t.Fatalf("Match: %v", err)
+			}
+			if got.Name() != tt.want {
+				t.Errorf("Match = %q, want %q", got.Name(), tt.want)
+			}
+		})
+	}
+}
+
+func TestRegistry_Match_providerRequirements_unsatisfiable(t *testing.T) {
+	r := registerSoftwareAndOpenSSL(t)
+	fips := core.ProviderRequirements{FIPS140Certified: true}
+
+	_, err := r.Match(t.Context(), provider.Requirements{TemplateID: "aes-256-gcm-128-96", Implementation: fips})
+	if !errors.IsProviderNotFound(err) {
+		t.Errorf("Match (no FIPS provider): error = %v, want provider not found", err)
+	}
+
+	_, err = r.Match(t.Context(), provider.Requirements{TemplateID: "aes-256-gcm-128-96", ProviderName: "openssl",
+		Implementation: core.ProviderRequirements{MemorySafe: true}})
+	if !errors.IsFailedPrecondition(err) {
+		t.Errorf("Match (pin contradicts a requirement): error = %v, want failed precondition", err)
+	}
+}
