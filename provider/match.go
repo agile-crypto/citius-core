@@ -21,6 +21,13 @@ func prefers(props *types.ImplementationProperties, required core.ProviderRequir
 	return required.PreferHardwareAccelerated && props.GetHardwareAccelerated()
 }
 
+// Meets reports whether p meets every hard requirement in required, judged
+// on the implementation properties it reports. It is the check Match applies
+// to each candidate.
+func Meets(p Backend, required core.ProviderRequirements) bool {
+	return satisfies(implementationProperties(p), required)
+}
+
 // satisfies reports whether props meet every hard requirement in required.
 // A property the provider does not report, including every property of a
 // provider with nil props, counts as not met: requirements fail closed.

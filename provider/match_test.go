@@ -496,3 +496,19 @@ func TestRegistry_Match_onlyRequestedPropertiesRank(t *testing.T) {
 		t.Errorf("Match (FIPS 140 level 2): error = %v, want provider not found", err)
 	}
 }
+
+func TestMeets(t *testing.T) {
+	fips := &describingProvider{props: &types.ImplementationProperties{Fips_140: &types.Fips140Certification{Certified: true}}}
+	plain := &capableProvider{name: "stub"}
+	required := core.ProviderRequirements{FIPS140Certified: true}
+
+	if !provider.Meets(fips, required) {
+		t.Error("Meets: a certified provider must meet a FIPS 140 requirement")
+	}
+	if provider.Meets(plain, required) {
+		t.Error("Meets: a provider reporting nothing must not meet a FIPS 140 requirement")
+	}
+	if !provider.Meets(plain, core.ProviderRequirements{}) {
+		t.Error("Meets: every provider meets no requirement")
+	}
+}
