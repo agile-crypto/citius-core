@@ -60,8 +60,9 @@ func TestProviderRequirementsFromProto_nilAndFalseRequireNothing(t *testing.T) {
 
 func TestProviderRequirementsFromProto_rejectsWhatItCannotEnforce(t *testing.T) {
 	for name, p := range map[string]*types.ProviderRequirements{
-		"additional":    {Additional: map[string]string{"vendor": "acme"}},
-		"unknown level": {MinFipsLevel: types.Fips140Level(5)},
+		"additional":     {Additional: map[string]string{"vendor": "acme"}},
+		"unknown level":  {MinFipsLevel: types.Fips140Level(5)},
+		"negative level": {MinFipsLevel: types.Fips140Level(-1)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := core.ProviderRequirementsFromProto(t.Context(), p)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	core "github.com/agile-crypto/citius-core"
+	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/policy"
 	"github.com/stretchr/testify/require"
 )
@@ -163,5 +164,5 @@ func TestCreatePolicy_providerRequirementsLevelOutOfRange_rejected(t *testing.T)
 		[]byte(`{"version":"1","provider_requirements":{"min_fips_level":5}}`))
 
 	_, err := enforcer.CreatePolicy(context.Background(), p)
-	require.Error(t, err)
+	require.True(t, errors.IsInvalidArgument(err), "CreatePolicy error = %v, want invalid argument", err)
 }
