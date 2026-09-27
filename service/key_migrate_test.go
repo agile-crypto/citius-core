@@ -276,7 +276,7 @@ func TestMigrateKey_rejectsBeforeSideEffects(t *testing.T) {
 				f.backends[migrateFIPSInstance].transfer = provider.Transfer{}
 			},
 			wantCode: errors.CodeProviderNotFound,
-			wantErr:  "can receive the key with MIGRATION_STRATEGY_PROVIDER_SWITCH",
+			wantErr:  `can receive the key with MIGRATION_STRATEGY_PROVIDER_SWITCH (openssl: MIGRATION_STRATEGY_PROVIDER_SWITCH to provider instance "openssl" is not possible: provider instance "openssl" does not accept`,
 		},
 		{
 			name: "provider-type search stops on an unexpected error",

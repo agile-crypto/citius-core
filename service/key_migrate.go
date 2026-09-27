@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
 
@@ -224,6 +225,30 @@ func (r *keyOrchestrator) checkMigration(ctx context.Context, m *migration, spec
 // validateMigrateKeySpec checks the request shape before any repository read.
 func validateMigrateKeySpec(ctx context.Context, spec MigrateKeySpec) error {
 	const op = "service.validateMigrateKeySpec"
+	if err := validateMigrationTarget(ctx, spec); err != nil {
+		return errors.Wrap(ctx, op, err)
+	}
+	switch {
+	case spec.Strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED:
+		return errors.New(ctx, op, errors.CodeInvalidArgument, "migration strategy is required")
+	case !migrationImplemented(spec.Strategy):
+		return errors.New(ctx, op, errors.CodeNotImplemented,
+			"migration strategy %s is not implemented", spec.Strategy)
+	default:
+		return nil
+	}
+}
+
+// migrationImplemented reports whether MigrateKey carries out strategy.
+func migrationImplemented(strategy messagespb.MigrationStrategy) bool {
+	return strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH ||
+		strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE
+}
+
+// validateMigrationTarget checks that spec names a key and exactly one
+// target.
+func validateMigrationTarget(ctx context.Context, spec MigrateKeySpec) error {
+	const op = "service.validateMigrationTarget"
 	if spec.KeyName == "" {
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "key name is required")
 	}
@@ -231,16 +256,7 @@ func validateMigrateKeySpec(ctx context.Context, spec MigrateKeySpec) error {
 		return errors.New(ctx, op, errors.CodeInvalidArgument,
 			"exactly one of target instance ID or target provider ID is required")
 	}
-	switch spec.Strategy {
-	case messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH,
-		messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE:
-		return nil
-	case messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED:
-		return errors.New(ctx, op, errors.CodeInvalidArgument, "migration strategy is required")
-	default:
-		return errors.New(ctx, op, errors.CodeNotImplemented,
-			"migration strategy %s is not implemented", spec.Strategy)
-	}
+	return nil
 }
 
 // migrationSource returns the provider instance a key's current version is
@@ -312,9 +328,9 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 	candidate := func(name string) (provider.Backend, error) {
 		pinned := custody
 		pinned.ProviderName = name
-		target, err := r.providers.Match(ctx, pinned)
-		if err != nil {
-			return nil, err
+		target, matchErr := r.providers.Match(ctx, pinned)
+		if matchErr != nil {
+			return nil, matchErr
 		}
 		if ok, reason := transferFeasibility(spec.Strategy, source, target, version, tmpl); !ok {
 			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
@@ -322,13 +338,26 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 		}
 		return target, nil
 	}
+	var target provider.Backend
 	if spec.TargetInstanceID != "" {
-		target, err := candidate(spec.TargetInstanceID)
-		if err != nil {
-			return nil, errors.Wrap(ctx, op, err)
-		}
-		return target, nil
+		target, err = candidate(spec.TargetInstanceID)
+	} else {
+		target, err = r.firstMigrationTarget(ctx, spec, sourceInstance, tmpl, candidate)
 	}
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return target, nil
+}
+
+// firstMigrationTarget returns the first instance of spec's provider type,
+// other than sourceInstance, that candidate accepts. An instance candidate
+// refuses is passed over, and the reason reported if none is accepted; any
+// other error stops the search.
+func (r *keyOrchestrator) firstMigrationTarget(ctx context.Context, spec MigrateKeySpec, sourceInstance string,
+	tmpl *template.Template, candidate func(name string) (provider.Backend, error)) (provider.Backend, error) {
+	const op = "service.(keyOrchestrator).firstMigrationTarget"
+	var passedOver []string
 	for _, b := range r.providers.List(ctx) {
 		if b.Type() != spec.TargetProviderID || b.Name() == sourceInstance {
 			continue
@@ -338,12 +367,33 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 		case err == nil:
 			return target, nil
 		case errors.IsProviderNotFound(err), errors.IsFailedPrecondition(err):
-			continue
+			passedOver = append(passedOver, fmt.Sprintf("%s: %s", b.Name(), refusalReason(err)))
 		default:
 			return nil, errors.Wrap(ctx, op, err)
 		}
 	}
-	return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
-		"no instance of provider %q other than %q supports template %q, meets the policy's provider requirements and can receive the key with %s",
+	msg := fmt.Sprintf("no instance of provider %q other than %q supports template %q, meets the policy's provider requirements and can receive the key with %s",
 		spec.TargetProviderID, sourceInstance, tmpl.TemplateID(), spec.Strategy)
+	if len(passedOver) > 0 {
+		msg += " (" + strings.Join(passedOver, "; ") + ")"
+	}
+	return nil, errors.New(ctx, op, errors.CodeProviderNotFound, "%s", msg)
+}
+
+// refusalReason is err's messages, outermost first, without the operation
+// names that locate them in the code.
+func refusalReason(err error) string {
+	var messages []string
+	for err != nil {
+		var e *errors.Error
+		if !errors.As(err, &e) {
+			messages = append(messages, err.Error())
+			break
+		}
+		if e.Message != "" {
+			messages = append(messages, e.Message)
+		}
+		err = e.Wrapped
+	}
+	return strings.Join(messages, ": ")
 }
