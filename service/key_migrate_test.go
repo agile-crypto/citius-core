@@ -9,6 +9,7 @@ import (
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/key"
+	"github.com/agile-crypto/citius-core/policy"
 	"github.com/agile-crypto/citius-core/provider"
 	"github.com/agile-crypto/citius-core/template"
 	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
@@ -259,9 +260,18 @@ func TestMigrateKeySpec_FromProto(t *testing.T) {
 type migrateFixture struct {
 	orchestrator KeyOrchestrator
 	repo         *fakeKeyRepository
+	templates    *fakeTemplateRegistry
 	providers    *multiProviderRegistry
 	backends     map[string]*namedBackend
 	template     *template.Template
+}
+
+// withPolicy rebuilds the fixture's orchestrator with pol.
+func (f *migrateFixture) withPolicy(t *testing.T, pol policy.Engine) {
+	t.Helper()
+	o, err := NewKeyOrchestrator(f.repo, f.templates, f.providers, pol)
+	require.NoError(t, err)
+	f.orchestrator = o
 }
 
 // newMigrateFixture stores one ECDSA P-256 key on the software instance, with
@@ -303,18 +313,23 @@ func newMigrateFixture(t *testing.T) *migrateFixture {
 			migrateTargetInstance: {tmpl.TemplateID(): true},
 			migrateFIPSInstance:   {tmpl.TemplateID(): true},
 		},
+		fips: map[string]bool{migrateFIPSInstance: true},
 	}
 
 	o, err := NewKeyOrchestrator(repo, templates, providers, allowAllPolicy{})
 	require.NoError(t, err)
-	return &migrateFixture{orchestrator: o, repo: repo, providers: providers, backends: backends, template: tmpl}
+	return &migrateFixture{orchestrator: o, repo: repo, templates: templates, providers: providers, backends: backends, template: tmpl}
 }
 
-// multiProviderRegistry holds several named instances, listed in order.
+// multiProviderRegistry holds several named instances, listed in order. Its
+// Match honours only a pin, template support and FIPS 140 certification, and
+// records every request.
 type multiProviderRegistry struct {
 	order     []string
 	backends  map[string]*namedBackend
 	supported map[string]map[string]bool
+	fips      map[string]bool
+	matched   []provider.Requirements
 }
 
 func (r *multiProviderRegistry) Register(context.Context, provider.Backend) error { return nil }
@@ -342,10 +357,15 @@ func (r *multiProviderRegistry) List(context.Context) []provider.Backend {
 func (r *multiProviderRegistry) Remove(context.Context, string) error { return nil }
 
 func (r *multiProviderRegistry) Match(ctx context.Context, req provider.Requirements) (provider.Backend, error) {
+	r.matched = append(r.matched, req)
 	b, ok := r.backends[req.ProviderName]
 	if !ok || !r.supported[req.ProviderName][req.TemplateID] {
 		return nil, errors.New(ctx, "fake.Match", errors.CodeProviderNotFound,
 			"provider %q does not support template %q", req.ProviderName, req.TemplateID)
+	}
+	if req.Implementation.FIPS140Certified && !r.fips[req.ProviderName] {
+		return nil, errors.New(ctx, "fake.Match", errors.CodeFailedPrecondition,
+			"provider %q is not FIPS 140 certified", req.ProviderName)
 	}
 	return b, nil
 }

@@ -140,7 +140,7 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	sourceInstance := lastVersion.GetProviderId()
-	target, err := r.migrationTarget(ctx, spec, sourceInstance, tmpl, versionSpec)
+	target, err := r.migrationTarget(ctx, spec, keyO.GetPolicyId(), sourceInstance, tmpl, versionSpec)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -216,15 +216,21 @@ func (r *keyOrchestrator) providerType(ctx context.Context, instance string) str
 }
 
 // migrationTarget resolves the provider instance a key migrates to. The
-// target must support the key's template and satisfy its scope's security
-// requirements. A provider-type target never resolves to sourceInstance.
-func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySpec, sourceInstance string, tmpl *template.Template, versionSpec *core.ScopeSpecification) (provider.Backend, error) {
+// target must support the key's template and meet its scope's security
+// requirements and its policy's provider requirements. A provider-type
+// target never resolves to sourceInstance.
+func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySpec, policyID, sourceInstance string, tmpl *template.Template, versionSpec *core.ScopeSpecification) (provider.Backend, error) {
 	const op = "service.(keyOrchestrator).migrationTarget"
+	fromPolicy, err := r.policy.ProviderRequirements(ctx, policyID)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
 	match := func(name string) (provider.Backend, error) {
 		return r.providers.Match(ctx, provider.Requirements{
-			TemplateID:   tmpl.TemplateID(),
-			ProviderName: name,
-			Security:     versionSpec.SecurityProps,
+			TemplateID:     tmpl.TemplateID(),
+			ProviderName:   name,
+			Security:       versionSpec.SecurityProps,
+			Implementation: fromPolicy,
 		})
 	}
 	if spec.TargetInstanceID != "" {
@@ -243,6 +249,6 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 		}
 	}
 	return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
-		"no instance of provider %q other than %q supports template %q with the key's security requirements",
+		"no instance of provider %q other than %q supports template %q with the key's security and provider requirements",
 		spec.TargetProviderID, sourceInstance, tmpl.TemplateID())
 }

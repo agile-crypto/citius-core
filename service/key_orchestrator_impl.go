@@ -129,6 +129,10 @@ func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpe
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument,
 			"scope is unknown or missing; scope is required for key creation")
 	}
+	custody, err := r.custody(ctx, req.PolicyID, req.ProviderInstanceID, req.ProviderRequirements)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
 	tmpl, versionSpec, err := r.pickVersionTemplate(ctx, req.PolicyID, req.TemplateID, req.ScopeSpecification)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -146,7 +150,20 @@ func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpe
 	}
 
 	// 3. Generate key material and persist key + initial version.
-	return r.generateAndPersistKey(ctx, op, req, tmpl, versionSpec)
+	return r.generateAndPersistKey(ctx, op, req, tmpl, versionSpec, custody)
+}
+
+// custody returns the provider requirements for a new version of a key under
+// policyID: the pinned provider instance, if any, and the policy's provider
+// requirements merged with requested. A request can add to the policy's
+// requirements but never relax them.
+func (r *keyOrchestrator) custody(ctx context.Context, policyID, pinned string, requested core.ProviderRequirements) (provider.Requirements, error) {
+	const op = "service.(keyOrchestrator).custody"
+	fromPolicy, err := r.policy.ProviderRequirements(ctx, policyID)
+	if err != nil {
+		return provider.Requirements{}, errors.Wrap(ctx, op, err)
+	}
+	return provider.Requirements{ProviderName: pinned, Implementation: requested.Merge(fromPolicy)}, nil
 }
 
 // pickVersionTemplate selects the template for a new key version and returns
@@ -260,16 +277,15 @@ func (r *keyOrchestrator) generateAndPersistKey(
 	req core.KeyCreationSpec,
 	tmpl *template.Template,
 	scopeSpec *core.ScopeSpecification,
+	custody provider.Requirements,
 ) (*KeyMetadata, error) {
 	// 1. Find a provider that supports this template — honouring an explicit
-	// provider_id pin (req.ProviderInstanceID) and the scope's security
-	// requirements (e.g. FIPS), rather than just the first provider that
-	// advertises the template.
-	prov, err := r.providers.Match(ctx, provider.Requirements{
-		TemplateID:   tmpl.TemplateID(),
-		ProviderName: req.ProviderInstanceID,
-		Security:     scopeSpec.SecurityProps,
-	})
+	// provider_id pin, the provider requirements of the request and policy,
+	// and the scope's security requirements (e.g. FIPS), rather than just the
+	// first provider that advertises the template.
+	custody.TemplateID = tmpl.TemplateID()
+	custody.Security = scopeSpec.SecurityProps
+	prov, err := r.providers.Match(ctx, custody)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -497,12 +513,15 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 
 	// TransformKey changes the algorithm while retaining custody. MigrateKey is
 	// responsible for moving a key between providers, so pin the current provider
-	// while validating its template support and requested security properties.
-	provider, err := r.providers.Match(ctx, provider.Requirements{
-		TemplateID:   targetTemplate.TemplateID(),
-		ProviderName: lastVersion.GetProviderId(),
-		Security:     spec.ScopeSpecification.SecurityProps,
-	})
+	// while validating its template support, the policy's provider requirements
+	// and the requested security properties.
+	custody, err := r.custody(ctx, keyO.GetPolicyId(), lastVersion.GetProviderId(), core.ProviderRequirements{})
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	custody.TemplateID = targetTemplate.TemplateID()
+	custody.Security = spec.ScopeSpecification.SecurityProps
+	provider, err := r.providers.Match(ctx, custody)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
