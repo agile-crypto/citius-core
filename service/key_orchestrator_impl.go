@@ -517,27 +517,32 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	// Create new key version with the new material, same key ID, and incremented version number.
+	metadata, err := r.appendVersion(ctx, keyO, lastVersion, targetTemplate.TemplateID(), provider.Name(), keyMaterial, versionSpec)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return metadata, nil
+}
+
+// appendVersion persists a new active version of keyO, numbered after
+// lastVersion, and returns the key's metadata at that version.
+func (r *keyOrchestrator) appendVersion(ctx context.Context, keyO *key.Key, lastVersion *key.Version,
+	templateID, providerID string, keyMaterial []byte, versionSpec *core.ScopeSpecification) (*KeyMetadata, error) {
+	const op = "service.(keyOrchestrator).appendVersion"
 	newVersionNumber := lastVersion.GetVersion() + 1
 	newVersionID := computeVersionID(keyO.GetPublicId(), newVersionNumber)
-	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), targetTemplate.TemplateID(), provider.Name(), newVersionNumber,
+	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), templateID, providerID, newVersionNumber,
 		keyMaterial, versionSpec, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	err = r.keys.AddVersion(ctx, newVersion)
-	if err != nil {
+	if err = r.keys.AddVersion(ctx, newVersion); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	// Update the state of previous version
 	// TODO: check how/when this hsould be done and the expected transition
 	// TODO: provide method in repository to update state
-
-	metadata, err := buildKeyMetadata(ctx, keyO, newVersion)
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
-	return metadata, nil
+	return buildKeyMetadata(ctx, keyO, newVersion)
 }
 
 // transformKeyMaterial returns the stored payload for the new key version:
