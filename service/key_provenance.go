@@ -23,6 +23,10 @@ func releasesMaterial(t provider.Transfer) bool {
 
 // generatedProvenance is the provenance of material prov has just generated
 // for tmpl.
+//
+// TODO: extractability is inferred from prov's advertisement for the
+// algorithm (D2). A provider that can generate some keys non-extractable
+// needs to report it per key, in GenerateKeyResponse.
 func generatedProvenance(prov provider.Backend, tmpl *template.Template) key.Provenance {
 	return key.Provenance{
 		Extractable:     releasesMaterial(provider.TransferOf(prov, tmpl.GetAlgorithm())),

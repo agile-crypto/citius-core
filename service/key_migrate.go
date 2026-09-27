@@ -20,14 +20,17 @@ import (
 //
 // Exactly one of TargetInstanceID (a registered provider instance name) or
 // TargetProviderID (a provider type; the first instance of that type that
-// supports the key's template and meets the policy's provider requirements
-// is used) must be set. A target instance must meet those requirements too.
+// supports the key's template, meets the policy's provider requirements and
+// can carry out the strategy is used) must be set. A target instance must
+// meet the same conditions.
 //
 // Supported strategies:
 //   - MIGRATION_STRATEGY_PROVIDER_SWITCH copies the stored key payload
 //     byte-for-byte to the target provider. The version must be extractable,
 //     its source instance registered, and the payload's encoding one the
-//     source releases and the target accepts as a stored payload.
+//     source releases and the target accepts as a stored payload. Under a
+//     policy requiring approved generation, the version's lineage must be
+//     approved.
 //   - MIGRATION_STRATEGY_REKEY_AND_ARCHIVE generates new material on the
 //     target provider. The previous version stays on the source provider, so
 //     data it protects can still be decrypted or verified.
@@ -222,6 +225,9 @@ func (r *keyOrchestrator) checkMigration(ctx context.Context, m *migration, spec
 	}
 	// A migration is authorized if creating the same key on the target
 	// provider is.
+	// TODO: this runs only on the target chosen, so a provider-type search
+	// would stop at an instance the policy denies instead of trying the next.
+	// No policy distinguishes instances yet.
 	if err = r.validateTransformOp(ctx, m.key.GetName(), m.key.GetPolicyId(), m.scope, target, m.template, m.key.GetLabels()); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}

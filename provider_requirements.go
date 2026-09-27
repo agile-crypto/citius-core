@@ -24,8 +24,8 @@ const MaxFIPS140Level = 4
 // must have been generated in a FIPS 140 validated module and held only by
 // validated modules since. Of a provider it requires FIPS 140 certification;
 // the orchestrator checks the material's lineage when it keeps existing
-// material. Only a policy sets it: a lineage constraint must outlive
-// creation.
+// material. It is meant to be set by a policy, since a lineage constraint
+// must outlive creation; the CreateKey request proto has no field for it.
 //
 // The zero value requires nothing.
 type ProviderRequirements struct {
