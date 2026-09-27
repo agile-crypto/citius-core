@@ -52,7 +52,10 @@ type KeyCreationSpec struct {
 	ScopeSpecification *ScopeSpecification
 	PolicyID           string
 	ProviderInstanceID string // optional: if empty, use default provider
-	Labels             map[string]string
+	// ProviderRequirements constrain the provider instance that creates the
+	// key, together with the policy's provider requirements.
+	ProviderRequirements ProviderRequirements
+	Labels               map[string]string
 }
 
 // KeyMaterial holds the raw bytes of a key as returned by GetKeyWithMaterial.
