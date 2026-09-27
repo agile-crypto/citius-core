@@ -9,6 +9,7 @@ import (
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/provider"
+	storepb "github.com/agile-crypto/citius-core/store"
 	"github.com/agile-crypto/citius-core/template"
 )
 
@@ -167,7 +168,12 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	md, err := r.appendVersion(ctx, keyO, lastVersion, tmpl.TemplateID(), target.Name(), keyMaterial, versionSpec)
+	provenance := generatedProvenance(target, tmpl)
+	if preserve {
+		provenance = keptProvenance(lastVersion, target, tmpl,
+			storepb.KeyOriginKind_KEY_ORIGIN_KIND_TRANSFERRED, storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD)
+	}
+	md, err := r.appendVersion(ctx, keyO, lastVersion, tmpl.TemplateID(), target.Name(), keyMaterial, versionSpec, provenance)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/agile-crypto/citius-core/key"
 	"github.com/agile-crypto/citius-core/policy"
 	"github.com/agile-crypto/citius-core/provider"
+	storepb "github.com/agile-crypto/citius-core/store"
 	"github.com/agile-crypto/citius-core/template"
 	"google.golang.org/protobuf/proto"
 )
@@ -356,7 +357,8 @@ func (r *keyOrchestrator) generateAndPersistKey(
 	}
 
 	v, err := key.NewVersion(ctx, versionID, keyID, tmpl.TemplateID(), prov.Name(), initialVersion, genRespBytes, scopeSpec,
-		key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
+		key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE),
+		key.WithProvenance(generatedProvenance(prov, tmpl)))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -561,7 +563,12 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	metadata, err := r.appendVersion(ctx, keyO, lastVersion, targetTemplate.TemplateID(), provider.Name(), keyMaterial, versionSpec)
+	provenance := generatedProvenance(provider, targetTemplate)
+	if spec.RetainBytes {
+		provenance = keptProvenance(lastVersion, provider, targetTemplate,
+			storepb.KeyOriginKind_KEY_ORIGIN_KIND_RETAINED, storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD)
+	}
+	metadata, err := r.appendVersion(ctx, keyO, lastVersion, targetTemplate.TemplateID(), provider.Name(), keyMaterial, versionSpec, provenance)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -569,14 +576,15 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 }
 
 // appendVersion persists a new active version of keyO, numbered after
-// lastVersion, and returns the key's metadata at that version.
+// lastVersion, with the given provenance, and returns the key's metadata at
+// that version.
 func (r *keyOrchestrator) appendVersion(ctx context.Context, keyO *key.Key, lastVersion *key.Version,
-	templateID, providerID string, keyMaterial []byte, versionSpec *core.ScopeSpecification) (*KeyMetadata, error) {
+	templateID, providerID string, keyMaterial []byte, versionSpec *core.ScopeSpecification, provenance key.Provenance) (*KeyMetadata, error) {
 	const op = "service.(keyOrchestrator).appendVersion"
 	newVersionNumber := lastVersion.GetVersion() + 1
 	newVersionID := computeVersionID(keyO.GetPublicId(), newVersionNumber)
 	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), templateID, providerID, newVersionNumber,
-		keyMaterial, versionSpec, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE))
+		keyMaterial, versionSpec, key.WithState(types.KeyLifecycleState_KEY_LIFECYCLE_STATE_ACTIVE), key.WithProvenance(provenance))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}

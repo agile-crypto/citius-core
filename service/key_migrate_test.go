@@ -11,6 +11,7 @@ import (
 	"github.com/agile-crypto/citius-core/key"
 	"github.com/agile-crypto/citius-core/policy"
 	"github.com/agile-crypto/citius-core/provider"
+	storepb "github.com/agile-crypto/citius-core/store"
 	"github.com/agile-crypto/citius-core/template"
 	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 	"github.com/stretchr/testify/require"
@@ -50,6 +51,12 @@ func TestMigrateKey_providerSwitchPreservesBytes(t *testing.T) {
 	require.Equal(t, f.template.TemplateID(), newVersion.GetTemplateId())
 	require.Equal(t, f.repo.versions[1].GetScopeSpecification(), newVersion.GetScopeSpecification(),
 		"a migration must keep the full scope specification")
+	require.Equal(t, &storepb.KeyOrigin{
+		Kind:             storepb.KeyOriginKind_KEY_ORIGIN_KIND_TRANSFERRED,
+		SourceVersion:    1,
+		SourceProviderId: migrateSourceInstance,
+		Channel:          storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD,
+	}, newVersion.GetOrigin())
 
 	oldVersion := f.repo.versions[1]
 	require.Equal(t, storedBefore, oldVersion.GetKeyMaterial())
@@ -92,6 +99,7 @@ func TestMigrateKey_rekeyAndArchiveGeneratesOnTarget(t *testing.T) {
 	require.Zero(t, f.backends[migrateSourceInstance].generateCalls)
 	require.NotEqual(t, storedBefore, f.repo.versions[2].GetKeyMaterial())
 	require.Equal(t, migrateTargetInstance, f.repo.versions[2].GetProviderId())
+	require.Equal(t, storepb.KeyOriginKind_KEY_ORIGIN_KIND_GENERATED, f.repo.versions[2].GetOrigin().GetKind())
 	require.Equal(t, storedBefore, f.repo.versions[1].GetKeyMaterial(), "the archived version must be untouched")
 	require.False(t, res.KeyBytesPreserved)
 	require.Equal(t, uint32(1), res.SourceVersion)
@@ -374,11 +382,20 @@ func (r *multiProviderRegistry) Match(ctx context.Context, req provider.Requirem
 	return b, nil
 }
 
-// namedBackend is a countingBackend with its own instance name and type.
+// namedBackend is a countingBackend with its own instance name and type,
+// implementation properties and transfer advertisement.
 type namedBackend struct {
 	countingBackend
-	name, typ string
+	name, typ      string
+	implementation *types.ImplementationProperties
+	transfer       provider.Transfer
 }
 
 func (b *namedBackend) Name() string { return b.name }
 func (b *namedBackend) Type() string { return b.typ }
+func (b *namedBackend) ImplementationProperties() *types.ImplementationProperties {
+	return b.implementation
+}
+func (b *namedBackend) TransferCapabilities(*types.AlgorithmDetails) provider.Transfer {
+	return b.transfer
+}

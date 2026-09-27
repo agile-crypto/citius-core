@@ -12,6 +12,7 @@ import (
 	"github.com/agile-crypto/citius-core/key"
 	"github.com/agile-crypto/citius-core/policy"
 	"github.com/agile-crypto/citius-core/provider"
+	storepb "github.com/agile-crypto/citius-core/store"
 	"github.com/agile-crypto/citius-core/template"
 	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 	"github.com/stretchr/testify/require"
@@ -77,6 +78,12 @@ func TestTransformKey_retainKeyBytes(t *testing.T) {
 			require.Equal(t, storedBefore, newVersion.GetKeyMaterial())
 			require.Equal(t, tt.target.TemplateID(), newVersion.GetTemplateId())
 			require.Equal(t, transformProviderID, newVersion.GetProviderId())
+			require.Equal(t, &storepb.KeyOrigin{
+				Kind:             storepb.KeyOriginKind_KEY_ORIGIN_KIND_RETAINED,
+				SourceVersion:    1,
+				SourceProviderId: transformProviderID,
+				Channel:          storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD,
+			}, newVersion.GetOrigin())
 
 			oldVersion := f.repo.versions[1]
 			require.Equal(t, storedBefore, oldVersion.GetKeyMaterial())
