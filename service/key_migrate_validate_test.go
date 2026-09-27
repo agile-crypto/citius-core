@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	stderrors "errors"
+	"fmt"
 	"testing"
 
 	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
@@ -184,4 +186,14 @@ func TestMigration_policyDenial(t *testing.T) {
 	require.NoError(t, err, "a policy denial is a reason, not an error")
 	require.False(t, v.Options[0].Feasible)
 	require.Equal(t, "create_key is denied", v.Options[0].Reason)
+}
+
+func TestRefusalReason(t *testing.T) {
+	ctx := context.Background()
+	inner := errors.New(ctx, "a", errors.CodeFailedPrecondition, "inner reason")
+	require.Equal(t, "outer: inner reason",
+		refusalReason(errors.Wrap(ctx, "b", errors.Wrap(ctx, "c", inner, errors.WithMessage("outer")))))
+	require.Equal(t, "plain", refusalReason(stderrors.New("plain")))
+	require.Equal(t, "wrapped: a: inner reason", refusalReason(fmt.Errorf("wrapped: %w", inner)),
+		"a non-core wrapper is kept whole")
 }

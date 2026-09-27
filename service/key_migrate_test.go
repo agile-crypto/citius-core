@@ -294,6 +294,14 @@ func TestMigrateKey_rejectsBeforeSideEffects(t *testing.T) {
 			wantErr:  `can receive the key with MIGRATION_STRATEGY_PROVIDER_SWITCH (openssl: MIGRATION_STRATEGY_PROVIDER_SWITCH to provider instance "openssl" is not possible: provider instance "openssl" does not accept`,
 		},
 		{
+			name: "unexpected error looking up the source",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategyArchive},
+			mutate: func(f *migrateFixture) {
+				f.providers.getErr = errors.New(context.Background(), "fake.Get", errors.CodeUnavailable, "registry unavailable")
+			},
+			wantCode: errors.CodeUnavailable,
+		},
+		{
 			name: "provider-type search stops on an unexpected error",
 			spec: MigrateKeySpec{KeyName: transformKeyName, TargetProviderID: "openssl", Strategy: strategyArchive},
 			mutate: func(f *migrateFixture) {
@@ -434,11 +442,15 @@ type multiProviderRegistry struct {
 	supported map[string]map[string]bool
 	matched   []provider.Requirements
 	matchErr  error // when set, every Match fails with it
+	getErr    error // when set, every Get fails with it
 }
 
 func (r *multiProviderRegistry) Register(context.Context, provider.Backend) error { return nil }
 
 func (r *multiProviderRegistry) Get(ctx context.Context, name string) (provider.Backend, error) {
+	if r.getErr != nil {
+		return nil, r.getErr
+	}
 	b, ok := r.backends[name]
 	if !ok {
 		return nil, errors.New(ctx, "fake.Get", errors.CodeProviderNotFound, "provider %q not found", name)

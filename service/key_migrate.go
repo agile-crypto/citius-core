@@ -400,12 +400,13 @@ func (r *keyOrchestrator) firstMigrationTarget(ctx context.Context, spec Migrate
 }
 
 // refusalReason is err's messages, outermost first, without the operation
-// names that locate them in the code.
+// names that locate them in the code. The first error that is not a core
+// error is kept whole.
 func refusalReason(err error) string {
 	var messages []string
 	for err != nil {
-		var e *errors.Error
-		if !errors.As(err, &e) {
+		e, ok := err.(*errors.Error) //nolint:errorlint // each layer is examined in turn
+		if !ok {
 			messages = append(messages, err.Error())
 			break
 		}
