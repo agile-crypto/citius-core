@@ -52,6 +52,12 @@ type KeyOrchestrator interface {
 	// earlier versions stay on their provider so data they protect remains
 	// usable. See MigrateKeySpec for the supported strategies.
 	MigrateKey(ctx context.Context, spec MigrateKeySpec) (*MigrationResult, error)
+
+	// ValidateMigration reports, without side effects, whether each
+	// migration strategy can move a key to spec's target, and recommends
+	// one. spec.Strategy, when set, limits the report to that strategy. See
+	// MigrationValidation.
+	ValidateMigration(ctx context.Context, spec MigrateKeySpec) (*MigrationValidation, error)
 }
 
 // KeyOrchestratorFactory builds the key-lifecycle orchestrator for one request.
