@@ -330,6 +330,7 @@ type multiProviderRegistry struct {
 	supported map[string]map[string]bool
 	fips      map[string]bool
 	matched   []provider.Requirements
+	matchErr  error // when set, every Match fails with it
 }
 
 func (r *multiProviderRegistry) Register(context.Context, provider.Backend) error { return nil }
@@ -358,6 +359,9 @@ func (r *multiProviderRegistry) Remove(context.Context, string) error { return n
 
 func (r *multiProviderRegistry) Match(ctx context.Context, req provider.Requirements) (provider.Backend, error) {
 	r.matched = append(r.matched, req)
+	if r.matchErr != nil {
+		return nil, r.matchErr
+	}
 	b, ok := r.backends[req.ProviderName]
 	if !ok || !r.supported[req.ProviderName][req.TemplateID] {
 		return nil, errors.New(ctx, "fake.Match", errors.CodeProviderNotFound,

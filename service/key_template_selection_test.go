@@ -92,3 +92,11 @@ func TestTransformKey_scopeSelectionOnlyConsidersTheCurrentProvider(t *testing.T
 	require.Equal(t, "ecdsa-p256", md.TemplateID)
 	require.Equal(t, migrateTargetInstance, md.Provider)
 }
+
+func TestCreateKey_scopeSelectionReturnsUnexpectedRegistryErrors(t *testing.T) {
+	f := newSelectionFixture(t, nil)
+	f.providers.matchErr = errors.New(context.Background(), "fake.Match", errors.CodeInternal, "registry unavailable")
+
+	_, err := createByScope(f, migrateTargetInstance)
+	requireCoreErrorCode(t, err, errors.CodeInternal)
+}

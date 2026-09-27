@@ -100,7 +100,11 @@ func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, tem
 			}
 		}
 
-		tmpl, err := r.templates.Select(ctx, scopeSpec, template.OnlyTemplates(r.servable(ctx, allowed, custody)...))
+		servable, err := r.servable(ctx, allowed, custody)
+		if err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
+		tmpl, err := r.templates.Select(ctx, scopeSpec, template.OnlyTemplates(servable...))
 		if err != nil {
 			return nil, errors.Wrap(ctx, op, err)
 		}
@@ -109,16 +113,24 @@ func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, tem
 }
 
 // servable returns, in order, the template IDs in ids that a provider meeting
-// custody implements.
-func (r *keyOrchestrator) servable(ctx context.Context, ids []string, custody provider.Requirements) []string {
+// custody implements. Only a "no such provider" or "provider does not meet
+// the requirements" answer excludes a template; any other error from the
+// registry is returned.
+func (r *keyOrchestrator) servable(ctx context.Context, ids []string, custody provider.Requirements) ([]string, error) {
+	const op = "service.(keyOrchestrator).servable"
 	var out []string
 	for _, id := range ids {
 		custody.TemplateID = id
-		if _, err := r.providers.Match(ctx, custody); err == nil {
+		_, err := r.providers.Match(ctx, custody)
+		switch {
+		case err == nil:
 			out = append(out, id)
+		case errors.IsProviderNotFound(err), errors.IsFailedPrecondition(err):
+		default:
+			return nil, errors.Wrap(ctx, op, err)
 		}
 	}
-	return out
+	return out, nil
 }
 func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpec) (*KeyMetadata, error) {
 	const op errors.Op = "service.(keyOrchestrator).CreateKey"
