@@ -480,3 +480,22 @@ func (b *namedBackend) ImplementationProperties() *types.ImplementationPropertie
 func (b *namedBackend) TransferCapabilities(*types.AlgorithmDetails) provider.Transfer {
 	return b.transfer
 }
+
+// A provider switch keeps the template, so it copies the payload without
+// the retained-material compatibility check TransformKey applies, which
+// ValidateMigration does not apply either.
+func TestMigrateKey_providerSwitchDoesNotNeedRetainableTemplates(t *testing.T) {
+	f := newMigrateFixture(t)
+	f.template.Proto().KeyMaterialFamily = ""
+
+	v, err := f.orchestrator.ValidateMigration(context.Background(), MigrateKeySpec{
+		KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategySwitch,
+	})
+	require.NoError(t, err)
+	require.True(t, v.Options[0].Feasible, v.Options[0].Reason)
+
+	_, err = f.orchestrator.MigrateKey(context.Background(), MigrateKeySpec{
+		KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategySwitch,
+	})
+	require.NoError(t, err)
+}

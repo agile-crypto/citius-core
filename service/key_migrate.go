@@ -136,21 +136,26 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 	}
 	keyO, lastVersion, tmpl := m.key, m.version, m.template
 
-	preserve := spec.Strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH
-	var keyMaterial []byte
-	if preserve {
-		keyMaterial, err = retainedKeyMaterial(ctx, tmpl, tmpl, lastVersion.GetKeyMaterial())
-	} else {
-		keyMaterial, err = generateKeyMaterial(ctx, op, target, tmpl)
-	}
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
-
-	provenance := generatedProvenance(target, tmpl)
-	if preserve {
+	var (
+		keyMaterial []byte
+		provenance  key.Provenance
+		preserve    bool
+	)
+	switch spec.Strategy {
+	case messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH:
+		// The template is kept, and checkMigration has parsed the payload,
+		// so it is copied as is.
+		keyMaterial, preserve = append([]byte(nil), lastVersion.GetKeyMaterial()...), true
 		provenance = keptProvenance(lastVersion, target, tmpl,
 			storepb.KeyOriginKind_KEY_ORIGIN_KIND_TRANSFERRED, storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD)
+	case messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE:
+		if keyMaterial, err = generateKeyMaterial(ctx, op, target, tmpl); err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
+		provenance = generatedProvenance(target, tmpl)
+	default:
+		return nil, errors.New(ctx, op, errors.CodeNotImplemented,
+			"migration strategy %s is not implemented", spec.Strategy)
 	}
 	md, err := r.appendVersion(ctx, keyO, lastVersion, tmpl.TemplateID(), target.Name(), keyMaterial, m.scope, provenance)
 	if err != nil {
