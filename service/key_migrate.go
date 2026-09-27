@@ -125,39 +125,15 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	keyO, err := r.keys.GetKeyByName(ctx, spec.KeyName)
+	m, err := r.loadMigration(ctx, spec.KeyName)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	lastVersion, err := r.keys.GetVersion(ctx, keyO.GetPublicId(), keyO.GetCurrentVersion())
+	target, err := r.checkMigration(ctx, m, spec)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	// A migration keeps the key's template and its full scope specification:
-	// only custody changes.
-	versionSpec := &core.ScopeSpecification{}
-	if err = versionSpec.Deserialize(ctx, lastVersion.GetScopeSpecification()); err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
-	tmpl, err := r.templates.Get(ctx, lastVersion.GetTemplateId())
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
-	sourceInstance := lastVersion.GetProviderId()
-	source, err := r.migrationSource(ctx, sourceInstance)
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
-	target, err := r.migrationTarget(ctx, spec, keyO.GetPolicyId(), lastVersion, source, tmpl)
-	if err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
-
-	// A migration is authorized if creating the same key on the target
-	// provider is.
-	if err = r.validateTransformOp(ctx, keyO.GetName(), keyO.GetPolicyId(), versionSpec, target, tmpl, keyO.GetLabels()); err != nil {
-		return nil, errors.Wrap(ctx, op, err)
-	}
+	keyO, lastVersion, tmpl := m.key, m.version, m.template
 
 	preserve := spec.Strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH
 	var keyMaterial []byte
@@ -175,7 +151,7 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		provenance = keptProvenance(lastVersion, target, tmpl,
 			storepb.KeyOriginKind_KEY_ORIGIN_KIND_TRANSFERRED, storepb.KeyTransferChannel_KEY_TRANSFER_CHANNEL_STORED_PAYLOAD)
 	}
-	md, err := r.appendVersion(ctx, keyO, lastVersion, tmpl.TemplateID(), target.Name(), keyMaterial, versionSpec, provenance)
+	md, err := r.appendVersion(ctx, keyO, lastVersion, tmpl.TemplateID(), target.Name(), keyMaterial, m.scope, provenance)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -183,12 +159,66 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		Key:               md,
 		Strategy:          spec.Strategy,
 		KeyBytesPreserved: preserve,
-		SourceProviderID:  backendType(source),
-		SourceInstanceID:  sourceInstance,
+		SourceProviderID:  backendType(m.source),
+		SourceInstanceID:  lastVersion.GetProviderId(),
 		SourceVersion:     lastVersion.GetVersion(),
 		TargetProviderID:  target.Type(),
 		TargetInstanceID:  target.Name(),
 	}, nil
+}
+
+// migration is what every strategy of a key's migration starts from.
+type migration struct {
+	key     *key.Key
+	version *key.Version // the current version, whose material migrates
+	// A migration keeps the key's template and its full scope specification:
+	// only custody changes.
+	scope    *core.ScopeSpecification
+	template *template.Template
+	source   provider.Backend // nil when version's instance is no longer registered
+}
+
+// loadMigration reads the key named keyName and its current version.
+func (r *keyOrchestrator) loadMigration(ctx context.Context, keyName string) (*migration, error) {
+	const op = "service.(keyOrchestrator).loadMigration"
+	keyO, err := r.keys.GetKeyByName(ctx, keyName)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	version, err := r.keys.GetVersion(ctx, keyO.GetPublicId(), keyO.GetCurrentVersion())
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	scope := &core.ScopeSpecification{}
+	if err = scope.Deserialize(ctx, version.GetScopeSpecification()); err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	tmpl, err := r.templates.Get(ctx, version.GetTemplateId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	source, err := r.migrationSource(ctx, version.GetProviderId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return &migration{key: keyO, version: version, scope: scope, template: tmpl, source: source}, nil
+}
+
+// checkMigration resolves the target of m with spec's target and strategy,
+// and checks everything that can refuse the migration before any side
+// effect. It does not check whether the strategy is implemented.
+func (r *keyOrchestrator) checkMigration(ctx context.Context, m *migration, spec MigrateKeySpec) (provider.Backend, error) {
+	const op = "service.(keyOrchestrator).checkMigration"
+	target, err := r.migrationTarget(ctx, spec, m.key.GetPolicyId(), m.version, m.source, m.template)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	// A migration is authorized if creating the same key on the target
+	// provider is.
+	if err = r.validateTransformOp(ctx, m.key.GetName(), m.key.GetPolicyId(), m.scope, target, m.template, m.key.GetLabels()); err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return target, nil
 }
 
 // validateMigrateKeySpec checks the request shape before any repository read.
