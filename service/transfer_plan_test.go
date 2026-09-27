@@ -79,11 +79,13 @@ func TestTransferFeasibility(t *testing.T) {
 		{"switch into a module with no level", switchS, software, &namedBackend{name: "nolevel", transfer: sec1StoredPayload, implementation: fipsNoLevel}, true, sec1, false, `"nolevel" does not accept`},
 		{"switch out of a level 3 module", switchS, &namedBackend{name: "l3", transfer: sec1StoredPayload, implementation: fipsLevel3}, software, true, sec1, false, `"l3" does not release`},
 		{"extract with a shared plaintext encoding", extractS, full, full, true, sec1, true, ""},
-		{"extract without one", extractS, software, full, true, sec1, false, "share no plaintext key encoding"},
+		{"extract from a source that exports nothing", extractS, software, full, true, sec1, false, `"software" exports no key`},
+		{"extract without a shared encoding", extractS, full, &namedBackend{name: "other", transfer: pkcs8Only}, true, sec1, false, "share no plaintext key encoding"},
 		{"extract of non-extractable material", extractS, full, full, false, sec1, false, "is not extractable"},
 		{"wrap with a shared mechanism", wrapS, full, full, false, none, true, ""},
 		{"wrap out of a level 3 module", wrapS, &namedBackend{name: "l3", transfer: allChannels, implementation: fipsLevel3}, full, false, none, true, ""},
-		{"wrap without one", wrapS, software, full, true, sec1, false, "share no key-wrapping mechanism"},
+		{"wrap from a source that wraps nothing", wrapS, software, full, true, sec1, false, `"software" wraps no key`},
+		{"wrap without a shared mechanism", wrapS, full, software, true, sec1, false, "share no key-wrapping mechanism"},
 		{"rekey and archive", archiveS, nil, &namedBackend{name: "hsm"}, false, none, true, ""},
 		{"rekey and destroy", destroyS, nil, &namedBackend{name: "hsm"}, false, none, true, ""},
 		{"unspecified strategy", messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED, software, software, true, sec1, false, "unknown migration strategy"},
@@ -99,4 +101,15 @@ func TestTransferFeasibility(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTransferFeasibility_payloadThatDoesNotParse(t *testing.T) {
+	tmpl := ecdsaTemplate("ecdsa-p256", types.EllipticCurve_ELLIPTIC_CURVE_P256, false)
+	software := &namedBackend{name: "software", transfer: sec1StoredPayload}
+	v := planVersion(t, true, providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_SEC1)
+	v.KeyMaterial = []byte{0xff}
+
+	feasible, reason := transferFeasibility(messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH, software, software, v, tmpl)
+	require.False(t, feasible)
+	require.Contains(t, reason, "does not parse")
 }

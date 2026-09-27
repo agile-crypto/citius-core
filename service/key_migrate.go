@@ -330,6 +330,11 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 			return nil, errors.Wrap(ctx, op, err)
 		}
 	}
+	// What the version and its source decide refuses the migration whatever
+	// the target, so it is checked once, before any target is considered.
+	if ok, reason := sourceFeasibility(spec.Strategy, source, version, tmpl); !ok {
+		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition, "%s is not possible: %s", spec.Strategy, reason)
+	}
 	candidate := func(name string) (provider.Backend, error) {
 		pinned := custody
 		pinned.ProviderName = name
@@ -337,7 +342,7 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 		if matchErr != nil {
 			return nil, matchErr
 		}
-		if ok, reason := transferFeasibility(spec.Strategy, source, target, version, tmpl); !ok {
+		if ok, reason := targetFeasibility(spec.Strategy, source, target, version, tmpl); !ok {
 			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
 				"%s to provider instance %q is not possible: %s", spec.Strategy, name, reason)
 		}

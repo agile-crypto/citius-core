@@ -230,7 +230,7 @@ func TestMigrateKey_rejectsBeforeSideEffects(t *testing.T) {
 				f.repo.versions[1].KeyMaterial = []byte{0xff}
 			},
 			wantCode: errors.CodeFailedPrecondition,
-			wantErr:  "does not record the encoding",
+			wantErr:  "does not parse",
 		},
 		{
 			name: "source instance no longer registered",
@@ -249,6 +249,15 @@ func TestMigrateKey_rejectsBeforeSideEffects(t *testing.T) {
 			},
 			wantCode: errors.CodeFailedPrecondition,
 			wantErr:  "is not extractable",
+		},
+		{
+			name: "non-extractable version, whatever instance of the provider type",
+			spec: MigrateKeySpec{KeyName: transformKeyName, TargetProviderID: "openssl", Strategy: strategySwitch},
+			mutate: func(f *migrateFixture) {
+				f.repo.versions[1].Extractable = false
+			},
+			wantCode: errors.CodeFailedPrecondition,
+			wantErr:  "MIGRATION_STRATEGY_PROVIDER_SWITCH is not possible: version 1 of the key is not extractable",
 		},
 		{
 			name: "target module at FIPS 140 level 3",
