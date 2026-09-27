@@ -132,7 +132,7 @@ func (r *keyOrchestrator) ValidateMigration(ctx context.Context, spec MigrateKey
 		SourceProviderID:     backendType(m.source),
 		SourceInstanceID:     m.version.GetProviderId(),
 		Extractable:          m.version.GetExtractable(),
-		SourceImplementation: implementationOf(m.source),
+		SourceImplementation: provider.ImplementationOf(m.source),
 	}
 	for _, strategy := range strategies {
 		spec.Strategy = strategy
@@ -176,12 +176,4 @@ func recommendMigration(options []StrategyAssessment) (messagespb.MigrationStrat
 		return archive.Strategy, reason
 	}
 	return messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED, "none of the assessed strategies can migrate the key to the target"
-}
-
-// implementationOf returns b's implementation properties, or nil.
-func implementationOf(b provider.Backend) *types.ImplementationProperties {
-	if d, ok := b.(provider.ImplementationDescriber); ok {
-		return d.ImplementationProperties()
-	}
-	return nil
 }

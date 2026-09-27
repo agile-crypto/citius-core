@@ -5,10 +5,10 @@ import (
 	core "github.com/agile-crypto/citius-core"
 )
 
-// implementationProperties returns p's ImplementationProperties, or nil if p
+// ImplementationOf returns p's ImplementationProperties, or nil if p
 // does not implement ImplementationDescriber. Every accessor on the result is
 // a nil-safe proto getter, so nil reports every property as unset.
-func implementationProperties(p Backend) *types.ImplementationProperties {
+func ImplementationOf(p Backend) *types.ImplementationProperties {
 	if id, ok := p.(ImplementationDescriber); ok {
 		return id.ImplementationProperties()
 	}
@@ -25,7 +25,7 @@ func prefers(props *types.ImplementationProperties, required core.ProviderRequir
 // on the implementation properties it reports. It is the check Match applies
 // to each candidate.
 func Meets(p Backend, required core.ProviderRequirements) bool {
-	return satisfies(implementationProperties(p), required)
+	return satisfies(ImplementationOf(p), required)
 }
 
 // satisfies reports whether props meet every hard requirement in required.

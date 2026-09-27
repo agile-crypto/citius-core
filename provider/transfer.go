@@ -63,7 +63,7 @@ func TransferOf(p Backend, algorithm *types.AlgorithmDetails) Transfer {
 		return Transfer{}
 	}
 	t := d.TransferCapabilities(algorithm)
-	if fips := implementationProperties(p).GetFips_140(); fips.GetCertified() && !permitsPlaintextKeys(fips.GetLevel()) {
+	if fips := ImplementationOf(p).GetFips_140(); fips.GetCertified() && !permitsPlaintextKeys(fips.GetLevel()) {
 		t.Emit.StoredPayload, t.Emit.Plaintext = nil, nil
 		t.Accept.StoredPayload, t.Accept.Plaintext = nil, nil
 	}

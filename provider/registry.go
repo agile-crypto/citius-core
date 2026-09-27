@@ -185,7 +185,7 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 			return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
 				"provider "+req.ProviderName+" does not support template: "+req.TemplateID)
 		}
-		if !satisfies(implementationProperties(p), req.Implementation) {
+		if !satisfies(ImplementationOf(p), req.Implementation) {
 			return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
 				"provider "+req.ProviderName+" does not meet the provider requirements")
 		}
@@ -205,7 +205,7 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 	var chosen Backend
 	for _, name := range names {
 		p := r.providers[name]
-		props := implementationProperties(p)
+		props := ImplementationOf(p)
 		if !satisfies(props, req.Implementation) {
 			continue
 		}
