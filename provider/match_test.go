@@ -55,8 +55,8 @@ func (c *capableProvider) SupportedAlgorithms() []string { return c.algorithms }
 var _ provider.Backend = (*capableProvider)(nil)
 
 // describingProvider adds ImplementationDescriber to capableProvider, so
-// Match tests can exercise the hard filter and soft score against a
-// Backend, not just score's own unit tests in match_internal_test.go.
+// Match tests can exercise requirements and preferences against a Backend,
+// not just the unit tests of satisfies and prefers in match_internal_test.go.
 type describingProvider struct {
 	capableProvider
 	props *types.ImplementationProperties

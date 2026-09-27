@@ -24,7 +24,8 @@ func (p templateListPolicy) AllowedTemplates(context.Context, string, *core.Scop
 }
 
 // softwareOnly is a template only the software instance implements; its ID
-// sorts before the fixture's ecdsa-p256 so catalog order puts it first too.
+// sorts before the fixture's ecdsa-p256 so the template registry lists it
+// first too.
 const softwareOnly = "aaa-software-only"
 
 // newSelectionFixture is the migrate fixture plus a template that only the

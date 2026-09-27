@@ -65,7 +65,7 @@ func NewKeyOrchestrator(
 // If templateID is non-empty, pickTemplate returns the template with that ID if it matches the scope spec;
 // provider matching later reports whether a provider meeting custody implements it.
 // If templateID is empty, pickTemplate returns the first template, in the policy's allowed_templates order
-// (catalog order when no policy applies), that matches the scope spec and that a provider meeting custody
+// (template registry List order when no policy applies), that matches the scope spec and that a provider meeting custody
 // (its pinned instance, if any, and provider requirements) implements. A template no such provider can
 // serve is never chosen, however early the policy lists it.
 func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, templateID string, scopeSpec *core.ScopeSpecification, custody provider.Requirements) (*template.Template, error) {

@@ -16,7 +16,8 @@ import (
 //
 // Exactly one of TargetInstanceID (a registered provider instance name) or
 // TargetProviderID (a provider type; the first instance of that type that
-// supports the key's template is used) must be set.
+// supports the key's template and meets the policy's provider requirements
+// is used) must be set. A target instance must meet those requirements too.
 //
 // Supported strategies:
 //   - MIGRATION_STRATEGY_PROVIDER_SWITCH copies the stored key payload

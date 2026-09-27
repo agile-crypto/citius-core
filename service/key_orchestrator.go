@@ -12,6 +12,10 @@ import (
 // Implementations coordinate template selection, provider dispatch, policy validation,
 // and repository persistence crossing aggregate boundaries.
 type KeyOrchestrator interface {
+	// CreateKey creates a key from spec.TemplateID, or else from the first
+	// template the policy allows that matches spec.ScopeSpecification and that
+	// a provider meeting the request's and the policy's provider requirements
+	// implements.
 	CreateKey(ctx context.Context, spec core.KeyCreationSpec) (*KeyMetadata, error)
 
 	// ReadKey returns the metadata for the named key at the given version.
@@ -34,9 +38,9 @@ type KeyOrchestrator interface {
 	// TransformKey transforms an existing key to a new template. The template is selected
 	// with the following precedence:
 	// 1. If spec.TemplateID is non-empty, the template with that ID is used.
-	// 2. Otherwise, the key's scope specification and policy are used to find a matching
-	// template. If multiple templates match, the one with the highest priority is used.
-	// (TODO: Definition of highest priority)
+	// 2. Otherwise, the first template the policy allows that matches the key's
+	// scope specification and that the key's current provider implements.
+	// Either way, the current provider must meet the policy's provider requirements.
 	//
 	// Retaining material requires an explicit compatible template. In that mode
 	// the current provider and complete stored provider payload are preserved;

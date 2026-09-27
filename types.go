@@ -51,9 +51,14 @@ type KeyCreationSpec struct {
 	TemplateID         string // set when key_specification=template_id
 	ScopeSpecification *ScopeSpecification
 	PolicyID           string
-	ProviderInstanceID string // optional: if empty, use default provider
+	// ProviderInstanceID optionally pins the provider instance. If empty, the
+	// first registered instance meeting the provider requirements is used,
+	// preferring a hardware-accelerated one when that is requested.
+	ProviderInstanceID string
 	// ProviderRequirements constrain the provider instance that creates the
-	// key, together with the policy's provider requirements.
+	// key, together with the policy's provider requirements. They apply at
+	// creation only and are not stored on the key: a constraint that must hold
+	// for later transforms and migrations belongs in the key's policy.
 	ProviderRequirements ProviderRequirements
 	Labels               map[string]string
 }
