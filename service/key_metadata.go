@@ -37,9 +37,10 @@ type KeyMetadata struct {
 	//TODO: Currently not populated deliberately
 	TemplateInfo *template.Template
 
-	// Whether the key material can be extracted from its provider.
-	// False for non-extractable HSM keys.
-	// Determines feasibility of EXTRACT_AND_IMPORT migration strategy.
+	// Whether this version's material may leave its provider in plaintext
+	// (a stored payload or an export). False for material a provider keeps,
+	// such as a non-extractable HSM key; once false, it stays false for that
+	// material. Required for PROVIDER_SWITCH and EXTRACT_AND_IMPORT.
 	Extractable bool
 
 	// Lifecycle state of the key (NIST SP 800-57, KMIP state machine).

@@ -88,3 +88,17 @@ func TestKeptProvenance_neverRegainsExtractabilityOrLineage(t *testing.T) {
 		})
 	}
 }
+
+func TestReadKey_reportsExtractability(t *testing.T) {
+	ctx := context.Background()
+	f := newMigrateFixture(t)
+	for _, extractable := range []bool{true, false} {
+		f.repo.versions[1].Extractable = extractable
+		md, err := f.orchestrator.ReadKey(ctx, transformKeyName, 1)
+		require.NoError(t, err)
+		require.Equal(t, extractable, md.Extractable)
+		resp, err := md.ToProto(ctx)
+		require.NoError(t, err)
+		require.Equal(t, extractable, resp.GetExtractable())
+	}
+}

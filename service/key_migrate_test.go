@@ -74,6 +74,7 @@ func TestMigrateKey_providerSwitchPreservesBytes(t *testing.T) {
 	}, res)
 	require.Equal(t, uint32(2), res.Key.Version)
 	require.Equal(t, migrateTargetInstance, res.Key.Provider)
+	require.Equal(t, newVersion.GetExtractable(), res.Key.Extractable, "metadata reports the version's extractability")
 
 	resp, err := res.ToProto(ctx)
 	require.NoError(t, err)

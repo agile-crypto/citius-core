@@ -285,6 +285,7 @@ func buildKeyMetadata(ctx context.Context, k *key.Key, v *key.Version) (*KeyMeta
 		md.Version = v.GetVersion()
 		md.TemplateID = v.GetTemplateId()
 		md.Provider = v.GetProviderId()
+		md.Extractable = v.GetExtractable()
 		//TODO: skip for now. TemplateInfo should be fetched by the application using the template id
 		// if tmpl, err := r.templates.Get(ctx, v.GetTemplateId()); err == nil {
 		// 	md.TemplateInfo = tmpl
