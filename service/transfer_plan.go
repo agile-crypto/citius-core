@@ -1,0 +1,95 @@
+package service
+
+import (
+	"fmt"
+	"slices"
+
+	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
+	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
+	"google.golang.org/protobuf/proto"
+
+	"github.com/agile-crypto/citius-core/key"
+	"github.com/agile-crypto/citius-core/provider"
+	"github.com/agile-crypto/citius-core/template"
+)
+
+// transferFeasibility reports whether strategy can move version's material
+// from source to target for tmpl, and if not, why.
+//
+// source is nil when the version's provider instance is no longer
+// registered. Only what the providers advertise (see provider.TransferOf)
+// and what the version records are checked: target resolution, policy and
+// whether the strategy is implemented are checked elsewhere, and a provider
+// may still refuse a particular key when the transfer runs.
+//
+// The rekey strategies generate new material on the target, which needs no
+// transfer, so they are always feasible here.
+func transferFeasibility(strategy messagespb.MigrationStrategy, source, target provider.Backend,
+	version *key.Version, tmpl *template.Template) (bool, string) {
+	switch strategy {
+	case messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE,
+		messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_DESTROY:
+		return true, ""
+	case messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH,
+		messagespb.MigrationStrategy_MIGRATION_STRATEGY_EXTRACT_AND_IMPORT,
+		messagespb.MigrationStrategy_MIGRATION_STRATEGY_WRAPPED_TRANSFER:
+	default:
+		return false, fmt.Sprintf("unknown migration strategy %s", strategy)
+	}
+
+	if source == nil {
+		return false, fmt.Sprintf("source provider instance %q is not registered, so nothing vouches for its material",
+			version.GetProviderId())
+	}
+	emit := provider.TransferOf(source, tmpl.GetAlgorithm()).Emit
+	accept := provider.TransferOf(target, tmpl.GetAlgorithm()).Accept
+
+	if strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_WRAPPED_TRANSFER {
+		if !sharesAny(emit.Wrapped, accept.Wrapped) {
+			return false, fmt.Sprintf("provider instances %q and %q share no key-wrapping mechanism for template %q",
+				source.Name(), target.Name(), tmpl.TemplateID())
+		}
+		return true, ""
+	}
+
+	// The two plaintext channels need material that may leave its provider.
+	if !version.GetExtractable() {
+		return false, fmt.Sprintf("version %d of the key is not extractable", version.GetVersion())
+	}
+	if strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_EXTRACT_AND_IMPORT {
+		if !sharesAny(emit.Plaintext, accept.Plaintext) {
+			return false, fmt.Sprintf("provider instances %q and %q share no plaintext key encoding for template %q",
+				source.Name(), target.Name(), tmpl.TemplateID())
+		}
+		return true, ""
+	}
+
+	encoding := storedEncoding(version)
+	if encoding == providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_UNSPECIFIED {
+		return false, fmt.Sprintf("version %d of the key does not record the encoding of its stored material", version.GetVersion())
+	}
+	if !slices.Contains(emit.StoredPayload, encoding) {
+		return false, fmt.Sprintf("provider instance %q does not release %s stored material for template %q",
+			source.Name(), encoding, tmpl.TemplateID())
+	}
+	if !slices.Contains(accept.StoredPayload, encoding) {
+		return false, fmt.Sprintf("provider instance %q does not accept %s stored material for template %q",
+			target.Name(), encoding, tmpl.TemplateID())
+	}
+	return true, ""
+}
+
+// storedEncoding returns the private-key encoding version's stored payload
+// records, or UNSPECIFIED when the payload does not parse or records none.
+func storedEncoding(version *key.Version) providerpb.PrivateKeyEncoding {
+	var stored providerpb.GenerateKeyResponse
+	if err := proto.Unmarshal(version.GetKeyMaterial(), &stored); err != nil {
+		return providerpb.PrivateKeyEncoding_PRIVATE_KEY_ENCODING_UNSPECIFIED
+	}
+	return stored.GetKeyMaterialEncoding()
+}
+
+// sharesAny reports whether a and b have an element in common.
+func sharesAny[T comparable](a, b []T) bool {
+	return slices.ContainsFunc(a, func(x T) bool { return slices.Contains(b, x) })
+}
