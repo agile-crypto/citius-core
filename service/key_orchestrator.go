@@ -42,6 +42,12 @@ type KeyOrchestrator interface {
 	// the current provider and complete stored provider payload are preserved;
 	// otherwise the provider generates new material for the target template.
 	TransformKey(ctx context.Context, spec TransformKeySpec) (*KeyMetadata, error)
+
+	// MigrateKey moves a key to another provider instance by adding a new
+	// current version there. The template and scope specification are kept;
+	// earlier versions stay on their provider so data they protect remains
+	// usable. See MigrateKeySpec for the supported strategies.
+	MigrateKey(ctx context.Context, spec MigrateKeySpec) (*MigrationResult, error)
 }
 
 // KeyOrchestratorFactory builds the key-lifecycle orchestrator for one request.
