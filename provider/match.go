@@ -1,16 +1,22 @@
 package provider
 
 import (
+	"google.golang.org/protobuf/proto"
+
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
 )
 
-// ImplementationOf returns p's ImplementationProperties, or nil if p
-// does not implement ImplementationDescriber. Every accessor on the result is
-// a nil-safe proto getter, so nil reports every property as unset.
+// ImplementationOf returns a copy of p's ImplementationProperties, or nil if
+// p does not implement ImplementationDescriber. The copy is the caller's: a
+// result that reports it cannot alias, and so cannot change, what the
+// provider holds. Every accessor on the result is a nil-safe proto getter,
+// so nil reports every property as unset.
 func ImplementationOf(p Backend) *types.ImplementationProperties {
 	if id, ok := p.(ImplementationDescriber); ok {
-		return id.ImplementationProperties()
+		if props := id.ImplementationProperties(); props != nil {
+			return proto.CloneOf(props)
+		}
 	}
 	return nil
 }
