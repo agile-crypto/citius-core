@@ -142,6 +142,23 @@ func TestMigrateKey_providerTypeSkipsInstancesThatCannotReceive(t *testing.T) {
 	require.Equal(t, migrateFIPSInstance, res.TargetInstanceID)
 }
 
+// The result carries what the chosen target reports about its
+// implementation, so a caller sees it landed on a FIPS 140 module.
+func TestMigrateKey_reportsTargetImplementation(t *testing.T) {
+	ctx := context.Background()
+	f := newMigrateFixture(t)
+
+	res, err := f.orchestrator.MigrateKey(ctx, MigrateKeySpec{
+		KeyName: transformKeyName, TargetInstanceID: migrateFIPSInstance, Strategy: strategySwitch,
+	})
+	require.NoError(t, err)
+	require.True(t, proto.Equal(fipsLevel1(), res.TargetImplementation), "got %v", res.TargetImplementation)
+
+	resp, err := res.ToProto(ctx)
+	require.NoError(t, err)
+	require.True(t, resp.GetResult().GetTargetImplementation().GetFips_140().GetCertified())
+}
+
 func TestMigrateKey_rekeyFromAnUnregisteredSource(t *testing.T) {
 	f := newMigrateFixture(t)
 	delete(f.providers.backends, migrateSourceInstance)

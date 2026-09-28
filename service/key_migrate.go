@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
+	"github.com/agile-crypto/citius-api-go/gen/go/types"
 
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
@@ -81,6 +82,10 @@ type MigrationResult struct {
 	SourceVersion    uint32
 	TargetProviderID string
 	TargetInstanceID string
+	// TargetImplementation is what the target instance reports about its
+	// implementation (FIPS 140, memory safety, ...); nil when it reports
+	// nothing.
+	TargetImplementation *types.ImplementationProperties
 }
 
 // ToProto converts the result to a MigrateKeyResponse.
@@ -105,12 +110,13 @@ func (m *MigrationResult) ToProto(ctx context.Context) (*messagespb.MigrateKeyRe
 		Message:     fmt.Sprintf("migrated from %s version %d to %s version %d", m.SourceInstanceID, m.SourceVersion, m.TargetInstanceID, m.Key.Version),
 		KeyMetadata: md,
 		Result: &messagespb.MigrationResult{
-			StrategyUsed:      m.Strategy,
-			KeyBytesPreserved: m.KeyBytesPreserved,
-			SourceProviderId:  m.SourceProviderID,
-			SourceInstanceId:  m.SourceInstanceID,
-			TargetProviderId:  m.TargetProviderID,
-			TargetInstanceId:  m.TargetInstanceID,
+			StrategyUsed:         m.Strategy,
+			KeyBytesPreserved:    m.KeyBytesPreserved,
+			SourceProviderId:     m.SourceProviderID,
+			SourceInstanceId:     m.SourceInstanceID,
+			TargetProviderId:     m.TargetProviderID,
+			TargetInstanceId:     m.TargetInstanceID,
+			TargetImplementation: m.TargetImplementation,
 		},
 	}
 	if m.Strategy == messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE {
@@ -166,14 +172,15 @@ func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (
 		return nil, errors.Wrap(ctx, op, err)
 	}
 	return &MigrationResult{
-		Key:               md,
-		Strategy:          spec.Strategy,
-		KeyBytesPreserved: preserve,
-		SourceProviderID:  backendType(m.source),
-		SourceInstanceID:  lastVersion.GetProviderId(),
-		SourceVersion:     lastVersion.GetVersion(),
-		TargetProviderID:  target.Type(),
-		TargetInstanceID:  target.Name(),
+		Key:                  md,
+		Strategy:             spec.Strategy,
+		KeyBytesPreserved:    preserve,
+		SourceProviderID:     backendType(m.source),
+		SourceInstanceID:     lastVersion.GetProviderId(),
+		SourceVersion:        lastVersion.GetVersion(),
+		TargetProviderID:     target.Type(),
+		TargetInstanceID:     target.Name(),
+		TargetImplementation: provider.ImplementationOf(target),
 	}, nil
 }
 
