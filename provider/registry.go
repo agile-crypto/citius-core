@@ -164,12 +164,12 @@ func (r *registry) Remove(ctx context.Context, name string) error {
 // substituted for another provider if it does not. A caller that pinned a
 // provider gets that provider or an error, not a surprise fallback.
 //
-// Otherwise, among the providers registered under req.TemplateID that meet
-// req.Implementation (see satisfies in match.go), the first-registered one
-// with a property req.Implementation prefers wins, or failing that the
-// first-registered one. Nothing else ranks providers, so with no requirement
-// the first-registered provider wins, as in the first-match scan this
-// replaced.
+// Otherwise the first candidate Rank orders among the providers registered
+// under req.TemplateID wins, if it meets req.Implementation: the
+// first-registered one with a property req.Implementation prefers, or
+// failing that the first-registered one. Nothing else ranks providers, so
+// with no requirement the first-registered provider wins, as in the
+// first-match scan this replaced.
 func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error) {
 	const op errors.Op = "provider.(Registry).Match"
 	r.mu.RLock()
@@ -201,26 +201,15 @@ func (r *registry) Match(ctx context.Context, req Requirements) (Backend, error)
 		return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
 			"no provider supports template: "+req.TemplateID)
 	}
-
-	var chosen Backend
+	registered := make([]Backend, 0, len(names))
 	for _, name := range names {
-		p := r.providers[name]
-		props := ImplementationOf(p)
-		if !satisfies(props, req.Implementation) {
-			continue
-		}
-		if prefers(props, req.Implementation) {
-			return p, nil
-		}
-		if chosen == nil {
-			chosen = p
-		}
+		registered = append(registered, r.providers[name])
 	}
-	if chosen == nil {
-		return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
-			"no provider meets the provider requirements for template: "+req.TemplateID)
+	if ranked := Rank(registered, req); len(ranked) > 0 && ranked[0].Eligible() {
+		return ranked[0].Backend, nil
 	}
-	return chosen, nil
+	return nil, errors.New(ctx, op, errors.CodeProviderNotFound,
+		"no provider meets the provider requirements for template: "+req.TemplateID)
 }
 
 // advertisesTemplate reports whether p declares templateID via

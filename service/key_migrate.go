@@ -326,8 +326,9 @@ func backendType(b provider.Backend) string {
 // when the policy requires approved generation.
 //
 // A provider-type target resolves to the first instance of that type that
-// qualifies. An instance is passed over only when it does not; any other
-// error stops the search.
+// qualifies, trying them in the order CreateKey chooses in (see
+// provider.Rank). An instance is passed over only when it does not qualify;
+// any other error stops the search.
 func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySpec, policyID string,
 	version *key.Version, source provider.Backend, tmpl *template.Template) (provider.Backend, error) {
 	const op = "service.(keyOrchestrator).migrationTarget"
@@ -368,7 +369,7 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 	if spec.TargetInstanceID != "" {
 		target, err = candidate(spec.TargetInstanceID)
 	} else {
-		target, err = r.firstMigrationTarget(ctx, spec, sourceInstance, tmpl, candidate)
+		target, err = r.firstMigrationTarget(ctx, spec, sourceInstance, custody, candidate)
 	}
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -377,14 +378,17 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 }
 
 // firstMigrationTarget returns the first instance of spec's provider type,
-// other than sourceInstance, that candidate accepts. An instance candidate
-// refuses is passed over, and the reason reported if none is accepted; any
-// other error stops the search.
+// other than sourceInstance, that candidate accepts, trying instances in the
+// order provider.Rank gives for custody: the order CreateKey chooses in, so
+// an instance with a property the policy prefers is tried first. An instance
+// candidate refuses is passed over, and the reason reported if none is
+// accepted; any other error stops the search.
 func (r *keyOrchestrator) firstMigrationTarget(ctx context.Context, spec MigrateKeySpec, sourceInstance string,
-	tmpl *template.Template, candidate func(name string) (provider.Backend, error)) (provider.Backend, error) {
+	custody provider.Requirements, candidate func(name string) (provider.Backend, error)) (provider.Backend, error) {
 	const op = "service.(keyOrchestrator).firstMigrationTarget"
 	var passedOver []string
-	for _, b := range r.providers.List(ctx) {
+	for _, c := range provider.Rank(r.providers.List(ctx), custody) {
+		b := c.Backend
 		if b.Type() != spec.TargetProviderID || b.Name() == sourceInstance {
 			continue
 		}
@@ -399,7 +403,7 @@ func (r *keyOrchestrator) firstMigrationTarget(ctx context.Context, spec Migrate
 		}
 	}
 	msg := fmt.Sprintf("no instance of provider %q other than %q supports template %q, meets the policy's provider requirements and can receive the key with %s",
-		spec.TargetProviderID, sourceInstance, tmpl.TemplateID(), spec.Strategy)
+		spec.TargetProviderID, sourceInstance, custody.TemplateID, spec.Strategy)
 	if len(passedOver) > 0 {
 		msg += " (" + strings.Join(passedOver, "; ") + ")"
 	}

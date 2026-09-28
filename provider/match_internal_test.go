@@ -83,7 +83,7 @@ func TestSatisfies_noKnownCVE_rejectsListedCVEs(t *testing.T) {
 	}
 }
 
-func TestPrefers(t *testing.T) {
+func TestPreferred(t *testing.T) {
 	accelerated := &types.ImplementationProperties{HardwareAccelerated: proto.Bool(true)}
 	prefer := core.ProviderRequirements{PreferHardwareAccelerated: true}
 	tests := []struct {
@@ -99,8 +99,8 @@ func TestPrefers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := prefers(tt.props, tt.required); got != tt.want {
-				t.Errorf("prefers = %v, want %v", got, tt.want)
+			if got := Preferred(tt.props, tt.required); got != tt.want {
+				t.Errorf("Preferred = %v, want %v", got, tt.want)
 			}
 		})
 	}

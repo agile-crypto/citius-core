@@ -142,6 +142,22 @@ func TestMigrateKey_providerTypeSkipsInstancesThatCannotReceive(t *testing.T) {
 	require.Equal(t, migrateFIPSInstance, res.TargetInstanceID)
 }
 
+// A provider-type target is chosen in CreateKey's order: an instance with a
+// property the policy prefers is tried before an earlier-registered one.
+func TestMigrateKey_providerTypeHonoursPreference(t *testing.T) {
+	f := newMigrateFixture(t)
+	f.backends[migrateFIPSInstance].implementation.HardwareAccelerated = proto.Bool(true)
+	o, err := NewKeyOrchestrator(f.repo, f.templates, f.providers,
+		providerRulePolicy{requirements: core.ProviderRequirements{PreferHardwareAccelerated: true}})
+	require.NoError(t, err)
+
+	res, err := o.MigrateKey(context.Background(), MigrateKeySpec{
+		KeyName: transformKeyName, TargetProviderID: "openssl", Strategy: strategySwitch,
+	})
+	require.NoError(t, err)
+	require.Equal(t, migrateFIPSInstance, res.TargetInstanceID)
+}
+
 // The result carries what the chosen target reports about its
 // implementation, so a caller sees it landed on a FIPS 140 module.
 func TestMigrateKey_reportsTargetImplementation(t *testing.T) {
@@ -157,6 +173,31 @@ func TestMigrateKey_reportsTargetImplementation(t *testing.T) {
 	resp, err := res.ToProto(ctx)
 	require.NoError(t, err)
 	require.True(t, resp.GetResult().GetTargetImplementation().GetFips_140().GetCertified())
+}
+
+// Both strategies report the target's implementation as a copy, and a
+// target that reports none leaves it unset.
+func TestMigrateKey_targetImplementationPerStrategy(t *testing.T) {
+	for _, strategy := range []messagespb.MigrationStrategy{strategySwitch, strategyArchive} {
+		t.Run(strategy.String(), func(t *testing.T) {
+			f := newMigrateFixture(t)
+			res, err := f.orchestrator.MigrateKey(context.Background(), MigrateKeySpec{
+				KeyName: transformKeyName, TargetInstanceID: migrateFIPSInstance, Strategy: strategy,
+			})
+			require.NoError(t, err)
+			require.True(t, proto.Equal(fipsLevel1(), res.TargetImplementation), "got %v", res.TargetImplementation)
+			res.TargetImplementation.Fips_140.Certified = false
+			require.True(t, f.backends[migrateFIPSInstance].implementation.GetFips_140().GetCertified(),
+				"changing the result changed what the provider holds")
+
+			f = newMigrateFixture(t)
+			res, err = f.orchestrator.MigrateKey(context.Background(), MigrateKeySpec{
+				KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance, Strategy: strategy,
+			})
+			require.NoError(t, err)
+			require.Nil(t, res.TargetImplementation)
+		})
+	}
 }
 
 func TestMigrateKey_rekeyFromAnUnregisteredSource(t *testing.T) {
@@ -434,6 +475,9 @@ func newMigrateFixture(t *testing.T) *migrateFixture {
 		migrateTargetInstance: {name: migrateTargetInstance, typ: "openssl", transfer: sec1StoredPayload},
 		migrateFIPSInstance:   {name: migrateFIPSInstance, typ: "openssl", transfer: sec1StoredPayload, implementation: fipsLevel1()},
 	}
+	for _, b := range backends {
+		b.algorithms = []string{tmpl.TemplateID()}
+	}
 	providers := &multiProviderRegistry{
 		order:    []string{migrateSourceInstance, migrateTargetInstance, migrateFIPSInstance},
 		backends: backends,
@@ -513,10 +557,12 @@ type namedBackend struct {
 	name, typ      string
 	implementation *types.ImplementationProperties
 	transfer       provider.Transfer
+	algorithms     []string // what SupportedAlgorithms advertises
 }
 
-func (b *namedBackend) Name() string { return b.name }
-func (b *namedBackend) Type() string { return b.typ }
+func (b *namedBackend) Name() string                  { return b.name }
+func (b *namedBackend) Type() string                  { return b.typ }
+func (b *namedBackend) SupportedAlgorithms() []string { return b.algorithms }
 func (b *namedBackend) ImplementationProperties() *types.ImplementationProperties {
 	return b.implementation
 }
