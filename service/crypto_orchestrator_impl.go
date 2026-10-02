@@ -282,14 +282,7 @@ func (o *cryptoOrchestrator) Verify(ctx context.Context, req crypto.VerifyReques
 		Output:              req.Output,
 		KeyMaterialEncoding: genResp.GetPublicKeyEncoding(),
 	}
-	switch {
-	case req.NoContext != nil:
-		provReq.ScopeParams = &providerpb.VerifyRequest_NoContext{NoContext: req.NoContext}
-	case req.DomainContext != nil:
-		provReq.ScopeParams = &providerpb.VerifyRequest_DomainContext{DomainContext: req.DomainContext}
-	case req.VendorContext != nil:
-		provReq.ScopeParams = &providerpb.VerifyRequest_VendorContext{VendorContext: req.VendorContext}
-	}
+	applyVerifyScopeParams(req.SignatureScopeFields, provReq)
 
 	// 7. Perform verify.
 	verifier, ok := prov.(provider.Signer)
@@ -326,6 +319,109 @@ func callVerifierAndValidate(ctx context.Context, op errors.Op, verifier provide
 		return nil, err
 	}
 	return verifyResp, nil
+}
+
+// VerifyWithPublicKey verifies a signature against a caller-supplied public
+// key — no stored key is involved. The request alone defines the template and
+// the policy; the provider is the one the request pins, or else the best
+// match for the template under the merged request and policy provider
+// requirements. The public key must be in the format that provider parses for
+// the template (see publicKeyFormats).
+func (o *cryptoOrchestrator) VerifyWithPublicKey(ctx context.Context, req crypto.VerifyWithPublicKeyRequest) (crypto.VerifyWithPublicKeyResult, error) {
+	const op errors.Op = "service.(cryptoOrchestrator).VerifyWithPublicKey"
+
+	// 1. Validate request.
+	if len(req.PublicKey) == 0 {
+		return crypto.VerifyWithPublicKeyResult{}, errors.New(ctx, op, errors.CodeInvalidArgument,
+			"PublicKey must not be empty")
+	}
+	if req.TemplateID == "" {
+		return crypto.VerifyWithPublicKeyResult{}, errors.New(ctx, op, errors.CodeInvalidArgument,
+			"TemplateID must not be empty")
+	}
+	if req.PolicyName == "" {
+		return crypto.VerifyWithPublicKeyResult{}, errors.New(ctx, op, errors.CodeInvalidArgument,
+			"PolicyName must not be empty")
+	}
+
+	// 2. Validate operation against the requested policy.
+	err := o.policy.ValidateOperation(ctx, req.PolicyName, core.OperationVerify, req.TemplateID, req.ProviderID)
+	if err != nil {
+		return crypto.VerifyWithPublicKeyResult{}, errors.Wrap(ctx, op, err)
+	}
+
+	// 3. Resolve template => *types.AlgorithmDetails for provider dispatch.
+	tmpl, err := o.templates.Get(ctx, req.TemplateID)
+	if err != nil {
+		return crypto.VerifyWithPublicKeyResult{}, errors.Wrap(ctx, op, err)
+	}
+
+	// 3a. Validate that the template declares Verify for the caller's scope.
+	if err = validatePublicKeySignatureScope(ctx, op, tmpl, req.SignatureScopeFields); err != nil {
+		return crypto.VerifyWithPublicKeyResult{}, err
+	}
+
+	// 4. Resolve the provider: the pinned one, or the best match for the
+	//    template. A request can add to the policy's provider requirements
+	//    but never relax them.
+	fromPolicy, err := o.policy.ProviderRequirements(ctx, req.PolicyName)
+	if err != nil {
+		return crypto.VerifyWithPublicKeyResult{}, errors.Wrap(ctx, op, err)
+	}
+	prov, err := o.providers.Match(ctx, provider.Requirements{
+		TemplateID:     req.TemplateID,
+		ProviderName:   req.ProviderID,
+		Implementation: req.ProviderRequirements.Merge(fromPolicy),
+	})
+	if err != nil {
+		return crypto.VerifyWithPublicKeyResult{}, errors.Wrap(ctx, op, err)
+	}
+
+	// 5. The public key must be in the format the provider parses for the template.
+	pubEnc, err := publicKeyEncodingFor(ctx, op, prov, req.TemplateID, req.PublicKeyFormat)
+	if err != nil {
+		return crypto.VerifyWithPublicKeyResult{}, err
+	}
+
+	// 6. Build provider-level VerifyRequest with scope_params oneof.
+	provReq := &providerpb.VerifyRequest{
+		KeyMaterial:         req.PublicKey,
+		Input:               req.Payload,
+		Signature:           req.Signature,
+		Algorithm:           tmpl.GetAlgorithm(),
+		KeyMaterialEncoding: pubEnc,
+	}
+	applyVerifyScopeParams(req.SignatureScopeFields, provReq)
+
+	// 7. Perform verify.
+	verifier, ok := prov.(provider.Signer)
+	if !ok {
+		return crypto.VerifyWithPublicKeyResult{}, errors.New(ctx, op, errors.CodeNotImplemented,
+			fmt.Sprintf("provider %q does not support verification", prov.Name()))
+	}
+	verifyResp, err := callVerifierAndValidate(ctx, op, verifier, provReq)
+	if err != nil {
+		return crypto.VerifyWithPublicKeyResult{}, err
+	}
+
+	// 8. Return result — invalid signature is NOT an error.
+	return crypto.VerifyWithPublicKeyResult{
+		Valid:      verifyResp.GetValid(),
+		TemplateID: req.TemplateID,
+		ProviderID: prov.Name(),
+	}, nil
+}
+
+// applyVerifyScopeParams copies the caller's scope_params oneof into provReq.
+func applyVerifyScopeParams(sf crypto.SignatureScopeFields, provReq *providerpb.VerifyRequest) {
+	switch {
+	case sf.NoContext != nil:
+		provReq.ScopeParams = &providerpb.VerifyRequest_NoContext{NoContext: sf.NoContext}
+	case sf.DomainContext != nil:
+		provReq.ScopeParams = &providerpb.VerifyRequest_DomainContext{DomainContext: sf.DomainContext}
+	case sf.VendorContext != nil:
+		provReq.ScopeParams = &providerpb.VerifyRequest_VendorContext{VendorContext: sf.VendorContext}
+	}
 }
 
 // DigestSign signs a pre-computed digest — the provider does NOT hash;
@@ -984,6 +1080,41 @@ func validateSignatureScopeParams(
 	if keyScopeSpec.Scope != callerScope {
 		return errors.New(ctx, op, errors.CodeInvalidArgument,
 			"caller scope %q does not match key scope %q", callerScope, keyScopeSpec.Scope)
+	}
+	return nil
+}
+
+// validatePublicKeySignatureScope is validateSignatureRequest for a Verify
+// with no key version: the caller's scope fields map to a message-signature
+// scope as in validateSignatureScopeParams, and tmpl must declare Verify for
+// it. Vendor context bypasses standard scope matching.
+func validatePublicKeySignatureScope(
+	ctx context.Context,
+	op errors.Op,
+	tmpl *template.Template,
+	sf crypto.SignatureScopeFields,
+) error {
+	var callerScope core.Scope
+	switch {
+	case sf.VendorContext != nil:
+		return nil
+	case sf.NoContext != nil:
+		callerScope = core.ScopeSignatureStandard
+	case sf.DomainContext != nil:
+		callerScope = core.ScopeSignatureWithContext
+	default:
+		return errors.New(ctx, op, errors.CodeInvalidArgument, "signature scope field is required")
+	}
+
+	operation := types.CryptoOperation_CRYPTO_OPERATION_VERIFY
+	supported, err := template.SupportsOperation(ctx, tmpl, callerScope, operation)
+	if err != nil {
+		return errors.Wrap(ctx, op, err)
+	}
+	if !supported {
+		return errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"template %q does not declare %s for scope %q",
+			tmpl.TemplateID(), operation, callerScope)
 	}
 	return nil
 }
