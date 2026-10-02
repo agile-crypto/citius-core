@@ -3,6 +3,7 @@ package crypto
 import (
 	messages "github.com/agile-crypto/citius-api-go/gen/go/messages"
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
+	core "github.com/agile-crypto/citius-core"
 )
 
 // SignatureScopeFields groups the scope_params for signature operations.
@@ -234,4 +235,46 @@ type DigestRequest struct {
 type DigestResult struct {
 	Digest    []byte
 	Algorithm string
+}
+
+// VerifyWithPublicKeyRequest carries the inputs for a stateless verification
+// against a caller-supplied public key (proto: [messages.VerifyWithPublicKeyRequest]).
+// No stored key is involved; the policy named by PolicyName authorizes the
+// operation and constrains the algorithm and provider.
+type VerifyWithPublicKeyRequest struct {
+	PublicKey       []byte          // encoded public key (proto: public_key)
+	PublicKeyFormat types.KeyFormat // encoding of PublicKey (proto: public_key_format)
+	Payload         []byte          // original data that was signed (proto: input)
+	Signature       []byte
+
+	// Scope must match the scope used during signing — exactly one must be non-nil.
+	// Maps to the scope_params oneof in caas.crypto.v1.VerifyWithPublicKeyRequest.
+	SignatureScopeFields
+
+	// Algorithm used to produce Signature, required
+	TemplateID string
+
+	PolicyName string // policy authorizing the operation; required
+
+	// ProviderID optionally pins the provider to use for verification.
+	// If empty, the orchestrator selects one meeting the
+	// provider requirements.
+	ProviderID string
+	// ProviderConfiguration optionally overrides the selected provider's
+	// default configuration.
+	ProviderConfiguration map[string]string
+	// ProviderRequirements constrain the provider instance, together with the
+	// policy's provider requirements. The zero value requires nothing.
+	ProviderRequirements core.ProviderRequirements
+
+	UserContext map[string]string // user-provided context for audit trail enrichment
+}
+
+// VerifyWithPublicKeyResult carries the outputs of a VerifyWithPublicKey
+// operation (proto: VerifyWithPublicKeyResponse).
+// Invalid signature is NOT an error — it returns Valid=false.
+type VerifyWithPublicKeyResult struct {
+	Valid      bool
+	TemplateID string // template resolved for the verification
+	ProviderID string // provider that performed the verification
 }
