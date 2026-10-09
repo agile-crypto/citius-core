@@ -6,6 +6,8 @@ import (
 
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/policy"
+	storepb "github.com/agile-crypto/citius-core/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // setupEnforcer creates an Enforcer backed by an in-memory fakeRepository.
@@ -129,7 +131,7 @@ func TestEnforcer_UpdatePolicy_happyPath(t *testing.T) {
 	ctx := context.Background()
 	_, _ = e.CreatePolicy(ctx, makePolicy("pol_01", "original"))
 
-	err := e.UpdatePolicy(ctx, makePolicy("pol_01_v2", "original"))
+	_, err := e.UpdatePolicy(ctx, makePolicy("pol_01_v2", "original"), 0)
 	if err != nil {
 		t.Fatalf("UpdatePolicy: %v", err)
 	}
@@ -145,9 +147,104 @@ func TestEnforcer_UpdatePolicy_happyPath(t *testing.T) {
 
 func TestEnforcer_UpdatePolicy_notFound_returnsError(t *testing.T) {
 	e := setupEnforcer(t)
-	err := e.UpdatePolicy(context.Background(), makePolicy("pol_01", "nonexistent"))
+	_, err := e.UpdatePolicy(context.Background(), makePolicy("pol_01", "nonexistent"), 0)
 	if err == nil {
 		t.Fatal("expected error for updating non-existent policy")
+	}
+}
+
+func TestEnforcer_versionsAndTimes(t *testing.T) {
+	e := setupEnforcer(t)
+	ctx := context.Background()
+
+	created, err := e.CreatePolicy(ctx, makePolicy("pol_01", "p"))
+	if err != nil {
+		t.Fatalf("CreatePolicy: %v", err)
+	}
+	if created.Version() != 1 {
+		t.Errorf("created version = %d, want 1", created.Version())
+	}
+	if created.CreateTime() == nil || !proto.Equal(created.CreateTime(), created.UpdateTime()) {
+		t.Errorf("created times = %v / %v, want both set and equal", created.CreateTime(), created.UpdateTime())
+	}
+
+	updated, err := e.UpdatePolicy(ctx, makePolicy("pol_01", "p"), 0)
+	if err != nil {
+		t.Fatalf("UpdatePolicy: %v", err)
+	}
+	if updated.Version() != 2 {
+		t.Errorf("updated version = %d, want 2", updated.Version())
+	}
+	if !proto.Equal(updated.CreateTime(), created.CreateTime()) {
+		t.Errorf("update changed create time: %v -> %v", created.CreateTime(), updated.CreateTime())
+	}
+	if updated.UpdateTime().AsTime().Before(created.UpdateTime().AsTime()) {
+		t.Errorf("update time went back: %v -> %v", created.UpdateTime(), updated.UpdateTime())
+	}
+
+	read, err := e.GetPolicy(ctx, "p")
+	if err != nil {
+		t.Fatalf("GetPolicy: %v", err)
+	}
+	if read.Version() != 2 {
+		t.Errorf("read version = %d, want 2", read.Version())
+	}
+}
+
+func TestEnforcer_UpdatePolicy_expectedVersion(t *testing.T) {
+	e := setupEnforcer(t)
+	ctx := context.Background()
+	if _, err := e.CreatePolicy(ctx, makePolicy("pol_01", "p")); err != nil {
+		t.Fatalf("CreatePolicy: %v", err)
+	}
+
+	if _, err := e.UpdatePolicy(ctx, makePolicy("pol_01", "p"), 2); !errors.IsFailedPrecondition(err) {
+		t.Fatalf("stale expected_version: err = %v, want FailedPrecondition", err)
+	}
+	if got, _ := e.GetPolicy(ctx, "p"); got.Version() != 1 {
+		t.Errorf("rejected update changed the version to %d", got.Version())
+	}
+	if _, err := e.UpdatePolicy(ctx, makePolicy("pol_01", "p"), -1); !errors.IsInvalidArgument(err) {
+		t.Errorf("negative expected_version: err = %v, want InvalidArgument", err)
+	}
+	updated, err := e.UpdatePolicy(ctx, makePolicy("pol_01", "p"), 1)
+	if err != nil {
+		t.Fatalf("matching expected_version: %v", err)
+	}
+	if updated.Version() != 2 {
+		t.Errorf("version = %d, want 2", updated.Version())
+	}
+}
+
+func TestEnforcer_UpdatePolicy_policyWithoutRecordedVersion(t *testing.T) {
+	repo := newFakeRepository()
+	e, err := policy.NewEnforcer(repo, policy.NewSimpleRulesEvaluator())
+	if err != nil {
+		t.Fatalf("NewEnforcer: %v", err)
+	}
+	ctx := context.Background()
+	// Written before versions were kept: no version, no times.
+	if err = repo.PutPolicy(ctx, makePolicy("pol_01", "old")); err != nil {
+		t.Fatalf("PutPolicy: %v", err)
+	}
+	if got, _ := e.GetPolicy(ctx, "old"); got.Version() != 0 || got.CreateTime() != nil {
+		t.Fatalf("unversioned policy reads as version %d, created %v", got.Version(), got.CreateTime())
+	}
+	updated, err := e.UpdatePolicy(ctx, makePolicy("pol_01", "old"), 0)
+	if err != nil {
+		t.Fatalf("UpdatePolicy: %v", err)
+	}
+	if updated.Version() != 1 || updated.CreateTime() != nil || updated.UpdateTime() == nil {
+		t.Errorf("after update: version %d, created %v, updated %v; want 1, unset, set",
+			updated.Version(), updated.CreateTime(), updated.UpdateTime())
+	}
+
+	corrupt := policy.New(&storepb.StoredPolicy{PublicId: "pol_02", Name: "corrupt", Version: "two"})
+	if err := repo.PutPolicy(ctx, corrupt); err != nil {
+		t.Fatalf("PutPolicy: %v", err)
+	}
+	if _, err := e.UpdatePolicy(ctx, makePolicy("pol_02", "corrupt"), 0); !errors.IsDataLoss(err) {
+		t.Errorf("unreadable stored version: err = %v, want DataLoss", err)
 	}
 }
 

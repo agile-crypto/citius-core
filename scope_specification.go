@@ -81,7 +81,7 @@ func extractAEAD(s *types.ScopeSpecification_Aead) *protoScopeSpec {
 	}
 	if s.Aead.NonceMisuseResistant != nil {
 		res.primitiveProps = &AEADProperties{
-			NonceMisuseResistant: *s.Aead.NonceMisuseResistant,
+			NonceMisuseResistant: cloneBool(s.Aead.NonceMisuseResistant),
 		}
 	}
 	return res
@@ -95,7 +95,7 @@ func extractKeyAgreement(s *types.ScopeSpecification_KeyAgreement) *protoScopeSp
 	}
 	if s.KeyAgreement.ForwardSecrecy != nil {
 		res.primitiveProps = &KeyAgreementProperties{
-			ForwardSecrecy: *s.KeyAgreement.ForwardSecrecy,
+			ForwardSecrecy: cloneBool(s.KeyAgreement.ForwardSecrecy),
 		}
 	}
 	return res
@@ -109,7 +109,7 @@ func extractKDF(s *types.ScopeSpecification_Kdf) *protoScopeSpec {
 	}
 	if s.Kdf.MemoryHard != nil {
 		res.primitiveProps = &KDFProperties{
-			MemoryHard: *s.Kdf.MemoryHard,
+			MemoryHard: cloneBool(s.Kdf.MemoryHard),
 		}
 	}
 	return res
@@ -123,8 +123,8 @@ func extractSignature(s *types.ScopeSpecification_Signature) *protoScopeSpec {
 	}
 	if s.Signature.NonMalleable != nil || s.Signature.Deterministic != nil || len(s.Signature.AcceptedDigestHashes) > 0 {
 		res.primitiveProps = &SignatureProperties{
-			NonMalleable:         s.Signature.NonMalleable != nil && *s.Signature.NonMalleable,
-			Deterministic:        s.Signature.Deterministic != nil && *s.Signature.Deterministic,
+			NonMalleable:         cloneBool(s.Signature.NonMalleable),
+			Deterministic:        cloneBool(s.Signature.Deterministic),
 			AcceptedDigestHashes: append([]types.HashAlgorithm(nil), s.Signature.AcceptedDigestHashes...),
 		}
 	}
@@ -182,32 +182,17 @@ func ScopeSpecificationFromProto(ctx context.Context, s *types.ScopeSpecificatio
 	}, nil
 }
 
-// If the pointer argument p is not nil, cast it to type T and apply the function f to it and return a pointer to its result. Otherwise, return nil.
-// NB: This was ok to reduce the cyclomatic complexity of the ToProto function, but it may be better to have one toProto function per primitive type,
-// to avoid the need for this helper function, which does not really reduce complexity, but just moves it to another function.
-func computeIfNotNil[T PrimitiveSpecificProperties, V any](p PrimitiveSpecificProperties, f func(T) V) *V {
-	if p != nil {
-		t, ok := p.(T)
-		if !ok {
-			// if the type assertion fails, return nil. This should not happen if the code is used correctly.
-			return nil
-		}
-		res := f(t)
-		return &res
+// propertyOf returns a copy of the optional property f reads from p, when p
+// holds properties of type T; nil when p is nil, of another type, or does
+// not state the property. A property that is not stated stays unset in the
+// proto: it is never recorded as false.
+func propertyOf[T PrimitiveSpecificProperties](p PrimitiveSpecificProperties, f func(T) *bool) *bool {
+	t, ok := p.(T)
+	var none T
+	if !ok || any(t) == any(none) {
+		return nil
 	}
-	return nil
-}
-
-// trueOrNil is computeIfNotNil for a boolean property whose false value means
-// "not required": it returns nil unless f(p) is true. A false property is left
-// unset rather than recorded as false, so a spec that only carries other
-// properties (such as accepted digest hashes) does not claim false for a
-// property the template may well have.
-func trueOrNil[T PrimitiveSpecificProperties](p PrimitiveSpecificProperties, f func(T) bool) *bool {
-	if v := computeIfNotNil(p, f); v != nil && *v {
-		return v
-	}
-	return nil
+	return cloneBool(f(t))
 }
 
 // Helper to build a protobuf [types.ScopeSpecification] from a scope and a list of options.
@@ -221,7 +206,7 @@ func (s *ScopeSpecification) ToProto(ctx context.Context) (*types.ScopeSpecifica
 					Scope:                s.Scope.ToProto().(types.AeadScope),
 					Security:             s.SecurityProps.ToProto(),
 					AdditionalProperties: s.AdditionalProps,
-					NonceMisuseResistant: computeIfNotNil(s.PrimitiveSpecificProps, func(p *AEADProperties) bool { return p.NonceMisuseResistant }),
+					NonceMisuseResistant: propertyOf(s.PrimitiveSpecificProps, func(p *AEADProperties) *bool { return p.NonceMisuseResistant }),
 				},
 			},
 		}, nil
@@ -252,7 +237,7 @@ func (s *ScopeSpecification) ToProto(ctx context.Context) (*types.ScopeSpecifica
 					Scope:                s.Scope.ToProto().(types.KeyAgreementScope),
 					Security:             s.SecurityProps.ToProto(),
 					AdditionalProperties: s.AdditionalProps,
-					ForwardSecrecy:       computeIfNotNil(s.PrimitiveSpecificProps, func(p *KeyAgreementProperties) bool { return p.ForwardSecrecy }),
+					ForwardSecrecy:       propertyOf(s.PrimitiveSpecificProps, func(p *KeyAgreementProperties) *bool { return p.ForwardSecrecy }),
 				},
 			},
 		}, nil
@@ -273,7 +258,7 @@ func (s *ScopeSpecification) ToProto(ctx context.Context) (*types.ScopeSpecifica
 					Scope:                s.Scope.ToProto().(types.KdfScope),
 					Security:             s.SecurityProps.ToProto(),
 					AdditionalProperties: s.AdditionalProps,
-					MemoryHard:           computeIfNotNil(s.PrimitiveSpecificProps, func(p *KDFProperties) bool { return p.MemoryHard }),
+					MemoryHard:           propertyOf(s.PrimitiveSpecificProps, func(p *KDFProperties) *bool { return p.MemoryHard }),
 				},
 			},
 		}, nil
@@ -314,8 +299,8 @@ func (s *ScopeSpecification) ToProto(ctx context.Context) (*types.ScopeSpecifica
 					Scope:                s.Scope.ToProto().(types.SignatureScope),
 					Security:             s.SecurityProps.ToProto(),
 					AdditionalProperties: s.AdditionalProps,
-					NonMalleable:         trueOrNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.NonMalleable }),
-					Deterministic:        trueOrNil(s.PrimitiveSpecificProps, func(p *SignatureProperties) bool { return p.Deterministic }),
+					NonMalleable:         propertyOf(s.PrimitiveSpecificProps, func(p *SignatureProperties) *bool { return p.NonMalleable }),
+					Deterministic:        propertyOf(s.PrimitiveSpecificProps, func(p *SignatureProperties) *bool { return p.Deterministic }),
 					AcceptedDigestHashes: append([]types.HashAlgorithm(nil), s.AcceptedDigestHashes()...),
 				},
 			},

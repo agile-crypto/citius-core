@@ -2,11 +2,13 @@ package policy
 
 import (
 	"context"
+	"strconv"
 
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	storepb "github.com/agile-crypto/citius-core/store"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Policy is the domain representation of an access-control / algorithm policy.
@@ -53,6 +55,35 @@ func (p *Policy) Name() string { return p.stored.GetName() }
 
 // RulesJSON returns the raw rules_json bytes from the underlying StoredPolicy.
 func (p *Policy) RulesJSON() []byte { return p.stored.GetRulesJson() }
+
+// Version returns the policy's version: 1 when created, one more on each
+// update. It is 0 when the stored policy records none (written before
+// versions were kept) or records one that is not a positive integer;
+// HasValidVersion tells these apart.
+func (p *Policy) Version() int64 {
+	v, err := strconv.ParseInt(p.stored.GetVersion(), 10, 64)
+	if err != nil || v < 1 {
+		return 0
+	}
+	return v
+}
+
+// HasValidVersion reports whether the stored version is unset or a positive
+// integer, the only two states the Enforcer writes.
+func (p *Policy) HasValidVersion() bool {
+	return p.stored.GetVersion() == "" || p.Version() > 0
+}
+
+// CreateTime returns when the policy was created, or nil if not recorded.
+func (p *Policy) CreateTime() *timestamppb.Timestamp {
+	return proto.CloneOf(p.stored.GetCreateTime())
+}
+
+// UpdateTime returns when the policy was last written, or nil if not
+// recorded.
+func (p *Policy) UpdateTime() *timestamppb.Timestamp {
+	return proto.CloneOf(p.stored.GetUpdateTime())
+}
 
 // Callers should use Clone() before mutating.
 func (p *Policy) Clone() *Policy {

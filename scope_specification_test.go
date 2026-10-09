@@ -53,7 +53,7 @@ func TestScopeSpecification_Completeness(t *testing.T) {
 			securityProps: &SecurityProperties{
 				SecurityStrength: 128,
 				SecurityLevel:    types.NistSecurityLevel_NIST_SECURITY_LEVEL_1,
-				QuantumSafe:      false,
+				QuantumSafe:      boolPtr(false),
 			},
 			additionalProps: nil,
 		},
@@ -67,7 +67,7 @@ func TestScopeSpecification_Completeness(t *testing.T) {
 			securityProps: &SecurityProperties{
 				SecurityStrength: 256,
 				SecurityLevel:    types.NistSecurityLevel_NIST_SECURITY_LEVEL_3,
-				QuantumSafe:      true,
+				QuantumSafe:      boolPtr(true),
 			},
 			additionalProps: map[string]string{"vendor": "example"},
 		},
@@ -133,11 +133,11 @@ func TestScopeSpecification_AcceptedDigestHashesRoundTrip(t *testing.T) {
 
 	// WithAcceptedDigestHashes keeps other signature properties and never
 	// mutates its receiver or the caller's slice.
-	base := &ScopeSpecification{Scope: ScopeSignaturePrehashed, PrimitiveSpecificProps: &SignatureProperties{Deterministic: true}}
+	base := &ScopeSpecification{Scope: ScopeSignaturePrehashed, PrimitiveSpecificProps: &SignatureProperties{Deterministic: boolPtr(true)}}
 	narrowed := base.WithAcceptedDigestHashes(hashes)
 	hashes[0] = types.HashAlgorithm_HASH_ALGORITHM_SHA256
 	require.Nil(t, base.AcceptedDigestHashes())
-	require.True(t, narrowed.PrimitiveSpecificProps.(*SignatureProperties).Deterministic)
+	require.True(t, IsTrue(narrowed.PrimitiveSpecificProps.(*SignatureProperties).Deterministic))
 	require.Equal(t, types.HashAlgorithm_HASH_ALGORITHM_SHA384, narrowed.AcceptedDigestHashes()[0])
 
 	require.Nil(t, (&ScopeSpecification{Scope: ScopeSignatureStandard}).AcceptedDigestHashes())
@@ -147,8 +147,9 @@ func TestScopeSpecification_AcceptedDigestHashesRoundTrip(t *testing.T) {
 
 // A spec that carries only digest hashes must not claim deterministic=false or
 // non_malleable=false: reading a key would then contradict its template
-// (e.g. ed25519ph is both). False properties stay unset; true ones are kept.
-func TestScopeSpecification_ToProtoLeavesFalseSignaturePropertiesUnset(t *testing.T) {
+// (e.g. ed25519ph is both). Unstated properties stay unset; stated ones,
+// true or false, are kept.
+func TestScopeSpecification_ToProtoLeavesUnstatedSignaturePropertiesUnset(t *testing.T) {
 	ctx := context.Background()
 	hashes := []types.HashAlgorithm{types.HashAlgorithm_HASH_ALGORITHM_SHA512}
 
@@ -161,11 +162,45 @@ func TestScopeSpecification_ToProtoLeavesFalseSignaturePropertiesUnset(t *testin
 
 	p, err = (&ScopeSpecification{
 		Scope:                  ScopeSignaturePrehashed,
-		PrimitiveSpecificProps: &SignatureProperties{Deterministic: true, AcceptedDigestHashes: hashes},
+		PrimitiveSpecificProps: &SignatureProperties{Deterministic: boolPtr(true), NonMalleable: boolPtr(false), AcceptedDigestHashes: hashes},
 	}).ToProto(ctx)
 	require.NoError(t, err)
 	require.True(t, p.GetSignature().GetDeterministic())
-	require.Nil(t, p.GetSignature().NonMalleable)
+	require.NotNil(t, p.GetSignature().NonMalleable, "a stated false is kept")
+	require.False(t, p.GetSignature().GetNonMalleable())
+}
+
+// The security properties' yes/no fields keep their presence both ways: a
+// request or template that does not state quantum_safe or fips_approved
+// never reads back as stating false, and a stated false survives.
+func TestScopeSpecification_SecurityPropertiesKeepPresence(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name              string
+		quantumSafe, fips *bool
+	}{
+		{name: "neither stated"},
+		{name: "quantum safe only", quantumSafe: boolPtr(true)},
+		{name: "stated false", quantumSafe: boolPtr(false), fips: boolPtr(false)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := &types.ScopeSpecification{ScopeSpec: &types.ScopeSpecification_Signature{Signature: &types.SignatureScopeSpec{
+				Scope:    types.SignatureScope_SIGNATURE_SCOPE_STANDARD,
+				Security: &types.UniversalSecurityProperties{QuantumSafe: tc.quantumSafe, FipsApproved: tc.fips},
+			}}}
+			spec, err := ScopeSpecificationFromProto(ctx, in)
+			require.NoError(t, err)
+			data, err := spec.Serialize(ctx)
+			require.NoError(t, err)
+			back := &ScopeSpecification{}
+			require.NoError(t, back.Deserialize(ctx, data))
+			out, err := back.ToProto(ctx)
+			require.NoError(t, err)
+			security := out.GetSignature().GetSecurity()
+			require.Equal(t, tc.quantumSafe, security.QuantumSafe)
+			require.Equal(t, tc.fips, security.FipsApproved)
+		})
+	}
 }
 
 func TestScopeSpecification_AEADOptions(t *testing.T) {

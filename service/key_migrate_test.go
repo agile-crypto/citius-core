@@ -556,13 +556,15 @@ type namedBackend struct {
 	countingBackend
 	name, typ      string
 	implementation *types.ImplementationProperties
+	info           *providerpb.ProviderInfo // what ProviderInfo describes; nil for nothing
 	transfer       provider.Transfer
 	algorithms     []string // what SupportedAlgorithms advertises
 }
 
-func (b *namedBackend) Name() string                  { return b.name }
-func (b *namedBackend) Type() string                  { return b.typ }
-func (b *namedBackend) SupportedAlgorithms() []string { return b.algorithms }
+func (b *namedBackend) Name() string                           { return b.name }
+func (b *namedBackend) Type() string                           { return b.typ }
+func (b *namedBackend) SupportedAlgorithms() []string          { return b.algorithms }
+func (b *namedBackend) ProviderInfo() *providerpb.ProviderInfo { return b.info }
 func (b *namedBackend) ImplementationProperties() *types.ImplementationProperties {
 	return b.implementation
 }

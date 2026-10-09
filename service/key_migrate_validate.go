@@ -33,6 +33,9 @@ type StrategyAssessment struct {
 	// SecurityNotes say what the strategy implies for the key's material
 	// and the data it protects, whether or not it is feasible.
 	SecurityNotes []string
+	// Complexity rates the strategy from 1 (trivial) to 5 (complex); see
+	// strategyComplexity.
+	Complexity int32
 }
 
 // strategySecurityNotes says what each strategy implies.
@@ -56,6 +59,27 @@ var strategySecurityNotes = map[messagespb.MigrationStrategy][]string{
 	},
 }
 
+// strategyComplexity rates each strategy on StrategyOption's 1 (trivial) to
+// 5 (complex) scale by what it leaves the key's users to do or risk:
+//
+//   - PROVIDER_SWITCH 1: the same material and public key; nothing changes
+//     for anyone using the key.
+//   - WRAPPED_TRANSFER 2: the same material, moved under a transport key the
+//     two providers must agree on.
+//   - EXTRACT_AND_IMPORT 3: the same material, exposed in plaintext on the
+//     way.
+//   - REKEY_AND_ARCHIVE 3: a new public key every relying party must pick
+//     up; data under the current version stays usable.
+//   - REKEY_AND_DESTROY 5: a new public key, and data under the current
+//     version is lost for good once it is destroyed.
+var strategyComplexity = map[messagespb.MigrationStrategy]int32{
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_PROVIDER_SWITCH:    1,
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_WRAPPED_TRANSFER:   2,
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_EXTRACT_AND_IMPORT: 3,
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_ARCHIVE:  3,
+	messagespb.MigrationStrategy_MIGRATION_STRATEGY_REKEY_AND_DESTROY:  5,
+}
+
 // MigrationValidation reports which strategies can migrate a key to a
 // target, as MigrateKey would decide, without side effects.
 type MigrationValidation struct {
@@ -67,6 +91,9 @@ type MigrationValidation struct {
 	// SourceImplementation describes SourceInstanceID; nil when it is no
 	// longer registered or does not describe itself.
 	SourceImplementation *types.ImplementationProperties
+	// SourceProviderType classifies SourceInstanceID's provider; UNSPECIFIED
+	// when it is no longer registered or does not describe its provider.
+	SourceProviderType types.ProviderType
 
 	Options []StrategyAssessment
 	// Recommended is the feasible strategy to prefer, or UNSPECIFIED when
@@ -88,6 +115,7 @@ func (v *MigrationValidation) ToProto() *messagespb.ValidateKeyOperationResponse
 			ProviderId:     v.SourceProviderID,
 			InstanceId:     v.SourceInstanceID,
 			Extractable:    v.Extractable,
+			ProviderType:   v.SourceProviderType,
 			Implementation: v.SourceImplementation,
 		},
 		RecommendedStrategy:  v.Recommended,
@@ -99,6 +127,7 @@ func (v *MigrationValidation) ToProto() *messagespb.ValidateKeyOperationResponse
 			Feasible:            o.Feasible,
 			InfeasibilityReason: o.Reason,
 			SecurityNotes:       o.SecurityNotes,
+			ComplexityLevel:     o.Complexity,
 		})
 	}
 	return resp
@@ -133,10 +162,15 @@ func (r *keyOrchestrator) ValidateMigration(ctx context.Context, spec MigrateKey
 		SourceInstanceID:     m.version.GetProviderId(),
 		Extractable:          m.version.GetExtractable(),
 		SourceImplementation: provider.ImplementationOf(m.source),
+		SourceProviderType:   provider.InfoOf(m.source).GetProviderType(),
 	}
 	for _, strategy := range strategies {
 		spec.Strategy = strategy
-		o := StrategyAssessment{Strategy: strategy, SecurityNotes: strategySecurityNotes[strategy]}
+		o := StrategyAssessment{
+			Strategy:      strategy,
+			SecurityNotes: strategySecurityNotes[strategy],
+			Complexity:    strategyComplexity[strategy],
+		}
 		target, err := r.checkMigration(ctx, m, spec)
 		switch {
 		case err == nil && !migrationImplemented(strategy):

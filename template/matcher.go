@@ -93,8 +93,8 @@ func SupportsOperation(ctx context.Context, tmpl *Template, scope core.Scope, op
 // satisfy the caller-side security filter (want).
 //
 // Nil-semantics per field:
-//   - want field nil  -> don't care -> always passes
-//   - want field non-nil -> got field must be non-nil and equal
+//   - want field nil or false -> no requirement -> always passes
+//   - want field true -> got field must be stated and true
 func securityPropertiesMatch(want, got *core.SecurityProperties) bool {
 	if want == nil {
 		return true
@@ -103,10 +103,10 @@ func securityPropertiesMatch(want, got *core.SecurityProperties) bool {
 		// caller specified security filters but template has no security properties -> no match
 		return false
 	}
-	if want.FipsApproved && !got.FipsApproved {
+	if core.IsTrue(want.FipsApproved) && !core.IsTrue(got.FipsApproved) {
 		return false
 	}
-	if want.QuantumSafe && !got.QuantumSafe {
+	if core.IsTrue(want.QuantumSafe) && !core.IsTrue(got.QuantumSafe) {
 		return false
 	}
 	if want.SecurityLevel != types.NistSecurityLevel_NIST_SECURITY_LEVEL_UNSPECIFIED && got.SecurityLevel < want.SecurityLevel {
@@ -127,10 +127,10 @@ func matchesSignatureProperties(ctx context.Context, want *core.SignaturePropert
 	if !ok {
 		return false, errors.New(ctx, op, errors.CodeInternal, "invalid PrimitiveSpecificProperties type: %T", got)
 	}
-	if want.Deterministic && !g.Deterministic {
+	if core.IsTrue(want.Deterministic) && !core.IsTrue(g.Deterministic) {
 		return false, nil
 	}
-	if want.NonMalleable && !g.NonMalleable {
+	if core.IsTrue(want.NonMalleable) && !core.IsTrue(g.NonMalleable) {
 		return false, nil
 	}
 	// A requested digest-hash list is a requirement: the template must accept
@@ -149,7 +149,7 @@ func matchesAeadProperties(ctx context.Context, want *core.AEADProperties, got c
 	if !ok {
 		return false, errors.New(ctx, op, errors.CodeInternal, "invalid PrimitiveSpecificProperties type: %T", got)
 	}
-	if want.NonceMisuseResistant && !g.NonceMisuseResistant {
+	if core.IsTrue(want.NonceMisuseResistant) && !core.IsTrue(g.NonceMisuseResistant) {
 		return false, nil
 	}
 	return true, nil
@@ -161,7 +161,7 @@ func matchesKeyAgreementProperties(ctx context.Context, want *core.KeyAgreementP
 	if !ok {
 		return false, errors.New(ctx, op, errors.CodeInternal, "invalid PrimitiveSpecificProperties type: %T", got)
 	}
-	if want.ForwardSecrecy && !g.ForwardSecrecy {
+	if core.IsTrue(want.ForwardSecrecy) && !core.IsTrue(g.ForwardSecrecy) {
 		return false, nil
 	}
 	return true, nil
@@ -173,7 +173,7 @@ func matchesKDFProperties(ctx context.Context, want *core.KDFProperties, got cor
 	if !ok {
 		return false, errors.New(ctx, op, errors.CodeInternal, "invalid PrimitiveSpecificProperties type: %T", got)
 	}
-	if want.MemoryHard && !g.MemoryHard {
+	if core.IsTrue(want.MemoryHard) && !core.IsTrue(g.MemoryHard) {
 		return false, nil
 	}
 	return true, nil

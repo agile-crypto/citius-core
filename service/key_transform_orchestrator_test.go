@@ -351,15 +351,20 @@ func rsaOaepTemplate(id string, bits uint32) *template.Template {
 	}})
 }
 
-// fakeKeyRepository holds a single key and its versions in memory.
+// fakeKeyRepository holds a single key and its versions in memory, plus the
+// keys CreateKey stores (looked up by ID only).
 type fakeKeyRepository struct {
 	key             *key.Key
 	versions        map[uint32]*key.Version
+	created         map[string]*key.Key
 	addVersionCalls int
 }
 
 func (r *fakeKeyRepository) GetKeyByID(ctx context.Context, id string) (*key.Key, error) {
-	if id != r.key.GetPublicId() {
+	if k, ok := r.created[id]; ok {
+		return k.Clone(), nil
+	}
+	if r.key == nil || id != r.key.GetPublicId() {
 		return nil, errors.New(ctx, "fake.GetKeyByID", errors.CodeNotFound, "key %q not found", id)
 	}
 	return r.key.Clone(), nil
@@ -388,7 +393,11 @@ func (r *fakeKeyRepository) GetCurrentVersion(ctx context.Context, id string) (*
 	return r.GetVersion(ctx, id, r.key.GetCurrentVersion())
 }
 
-func (r *fakeKeyRepository) CreateKey(context.Context, *key.Key, *key.Version, ...key.Option) error {
+func (r *fakeKeyRepository) CreateKey(_ context.Context, k *key.Key, _ *key.Version, _ ...key.Option) error {
+	if r.created == nil {
+		r.created = map[string]*key.Key{}
+	}
+	r.created[k.GetPublicId()] = k.Clone()
 	return nil
 }
 

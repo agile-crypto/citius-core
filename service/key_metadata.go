@@ -8,6 +8,7 @@ import (
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/template"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -34,8 +35,21 @@ type KeyMetadata struct {
 	Labels           map[string]string
 	ProviderMetadata map[string]string
 
-	//TODO: Currently not populated deliberately
+	// The version's template: what the key is, as the catalogue describes it.
+	// Nil only if the template is no longer in the catalogue.
 	TemplateInfo *template.Template
+
+	// The security guarantees the template gives for the key's scope (see
+	// template.SecurityGuaranteesFor). Not part of the KeyMetadata proto:
+	// CreateKey reports them in its response.
+	SecurityGuarantees *types.SecurityGuarantees
+
+	// The current implementation properties of the provider instance holding
+	// the version. Nil only if the instance is no longer registered.
+	ImplementationProperties *types.ImplementationProperties
+
+	// How the version's material first came into existence.
+	Origin types.KeyOrigin
 
 	// Whether this version's material may leave its provider in plaintext
 	// (a stored payload or an export). False for material a provider keeps,
@@ -64,16 +78,17 @@ func (m *KeyMetadata) ToProto(ctx context.Context) (*messages.KeyMetadata, error
 		TemplateId:               m.TemplateID,
 		ScopeSpec:                nil, // set below if m.ScopeSpec is not nil
 		Provider:                 m.Provider,
-		CreatedTime:              m.CreatedTime,
-		UpdatedTime:              m.UpdatedTime,
+		CreatedTime:              proto.CloneOf(m.CreatedTime),
+		UpdatedTime:              proto.CloneOf(m.UpdatedTime),
 		Policy:                   m.Policy,
 		ProviderMetadata:         m.ProviderMetadata,
 		TemplateInfo:             nil, // set below if m.TemplateInfo is not nil
-		ImplementationProperties: nil, // TODO: Add to KeyMetadata if needed
+		ImplementationProperties: nil, // set below if m.ImplementationProperties is not nil
 		Extractable:              m.Extractable,
 		LifecycleState:           m.LifecycleState,
 		PublicKeyBytes:           m.PublicKeyBytes,
 		PublicKeyFormat:          m.PublicKeyFormat,
+		Origin:                   m.Origin,
 	}
 	if m.ScopeSpec != nil {
 		scopeSpecProto, err := m.ScopeSpec.ToProto(ctx)
@@ -83,7 +98,11 @@ func (m *KeyMetadata) ToProto(ctx context.Context) (*messages.KeyMetadata, error
 		res.ScopeSpec = scopeSpecProto
 	}
 	if m.TemplateInfo != nil {
-		res.TemplateInfo = m.TemplateInfo.Proto()
+		// A copy: the catalogue's own message must never reach a response.
+		res.TemplateInfo = proto.CloneOf(m.TemplateInfo.Proto())
+	}
+	if m.ImplementationProperties != nil {
+		res.ImplementationProperties = proto.CloneOf(m.ImplementationProperties)
 	}
 	return res, nil
 }

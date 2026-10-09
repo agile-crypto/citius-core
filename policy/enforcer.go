@@ -2,9 +2,13 @@ package policy
 
 import (
 	"context"
+	"strconv"
+	"time"
 
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/errors"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Enforcer implements policy.Engine.
@@ -13,6 +17,7 @@ import (
 type Enforcer struct {
 	store     Repository
 	evaluator RulesEvaluator
+	now       func() time.Time // stamps create and update times
 }
 
 // NewEnforcer creates an Enforcer backed by the given Repository and
@@ -27,7 +32,7 @@ func NewEnforcer(s Repository, eval RulesEvaluator) (*Enforcer, error) {
 		return nil, errors.New(context.Background(), op, errors.CodeInvalidArgument,
 			"rules evaluator must not be nil")
 	}
-	return &Enforcer{store: s, evaluator: eval}, nil
+	return &Enforcer{store: s, evaluator: eval, now: time.Now}, nil
 }
 
 // ---- Policy CRUD ----
@@ -50,6 +55,11 @@ func (r *Enforcer) CreatePolicy(ctx context.Context, p *Policy) (*Policy, error)
 		return nil, errors.New(ctx, op, errors.CodeAlreadyExists,
 			"policy already exists: "+p.Name())
 	}
+	p = p.Clone()
+	now := timestamppb.New(r.now())
+	p.stored.Version = "1"
+	p.stored.CreateTime = now
+	p.stored.UpdateTime = proto.CloneOf(now)
 	if err := r.store.PutPolicy(ctx, p); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -65,27 +75,55 @@ func (r *Enforcer) GetPolicy(ctx context.Context, name string) (*Policy, error) 
 	return p, nil
 }
 
-func (r *Enforcer) UpdatePolicy(ctx context.Context, p *Policy) error {
+// UpdatePolicy implements Manager. The stored policy keeps its create time;
+// its version goes up by one and its update time becomes now. A policy
+// written before versions were kept has version 0, so its first update makes
+// it version 1.
+//
+// The version check and the write are separate repository calls
+// (GetPolicy, then PutPolicy), so two concurrent conditional updates with
+// the same expectedVersion can both pass the check: both writes succeed,
+// the later one wins, and both callers are told the same new version. The
+// Repository interface has no compare-and-put to close that window; until
+// it does, expectedVersion detects stale writers but does not serialize
+// concurrent ones.
+func (r *Enforcer) UpdatePolicy(ctx context.Context, p *Policy, expectedVersion int64) (*Policy, error) {
 	const op errors.Op = "policy.(Enforcer).UpdatePolicy"
 	if p == nil {
-		return errors.New(ctx, op, errors.CodeInvalidArgument, "policy must not be nil")
+		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "policy must not be nil")
+	}
+	if expectedVersion < 0 {
+		return nil, errors.New(ctx, op, errors.CodeInvalidArgument,
+			"expected_version must not be negative, got %d", expectedVersion)
 	}
 	if err := p.VetForWrite(ctx, core.OpUpdate); err != nil {
-		return errors.Wrap(ctx, op, err)
+		return nil, errors.Wrap(ctx, op, err)
 	}
 	// Validate rules_json via evaluator
 	if err := r.evaluator.Validate(p.RulesJSON()); err != nil {
-		return errors.New(ctx, op, errors.CodeInvalidArgument,
+		return nil, errors.New(ctx, op, errors.CodeInvalidArgument,
 			"invalid rules_json: "+err.Error())
 	}
-	// Verify policy exists before update
-	if _, err := r.store.GetPolicy(ctx, p.Name()); err != nil {
-		return errors.Wrap(ctx, op, err)
+	stored, err := r.store.GetPolicy(ctx, p.Name())
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
 	}
+	if !stored.HasValidVersion() {
+		return nil, errors.New(ctx, op, errors.CodeDataLoss,
+			"policy %s has an unreadable stored version %q", p.Name(), stored.stored.GetVersion())
+	}
+	if expectedVersion > 0 && stored.Version() != expectedVersion {
+		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
+			"policy version conflict: %s is at version %d, expected %d", p.Name(), stored.Version(), expectedVersion)
+	}
+	p = p.Clone()
+	p.stored.Version = strconv.FormatInt(stored.Version()+1, 10)
+	p.stored.CreateTime = stored.CreateTime()
+	p.stored.UpdateTime = timestamppb.New(r.now())
 	if err := r.store.PutPolicy(ctx, p); err != nil {
-		return errors.Wrap(ctx, op, err)
+		return nil, errors.Wrap(ctx, op, err)
 	}
-	return nil
+	return r.store.GetPolicy(ctx, p.Name())
 }
 
 func (r *Enforcer) DeletePolicy(ctx context.Context, name string) error {

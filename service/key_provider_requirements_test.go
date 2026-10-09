@@ -105,7 +105,7 @@ func TestCreateKey_scopeFIPSApprovalDoesNotChooseTheProvider(t *testing.T) {
 		PolicyID:   transformPolicyID,
 		ScopeSpecification: &core.ScopeSpecification{
 			Scope:         core.ScopeSignatureStandard,
-			SecurityProps: &core.SecurityProperties{FipsApproved: true},
+			SecurityProps: &core.SecurityProperties{FipsApproved: proto.Bool(true)},
 		},
 		ProviderInstanceID: migrateTargetInstance,
 	})

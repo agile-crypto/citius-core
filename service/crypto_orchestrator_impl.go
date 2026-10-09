@@ -306,6 +306,7 @@ func (o *cryptoOrchestrator) Verify(ctx context.Context, req crypto.VerifyReques
 	return crypto.VerifyResult{
 		Valid:        verifyResp.GetValid(),
 		KeyName:      req.KeyName,
+		KeyVersion:   kv.GetVersion(),
 		Algorithm:    templateID,
 		ProviderName: prov.Name(),
 		Output:       verifyResp.GetOutput(),
@@ -541,9 +542,11 @@ func (o *cryptoOrchestrator) DigestVerify(ctx context.Context, req crypto.Digest
 	return crypto.VerifyResult{
 		Valid:        digestVerifyResp.GetValid(),
 		KeyName:      req.KeyName,
+		KeyVersion:   kv.GetVersion(),
 		Algorithm:    templateID,
 		ProviderName: prov.Name(),
 		Output:       digestVerifyResp.GetOutput(),
+		DigestHash:   req.DigestHash,
 	}, nil
 }
 
@@ -787,6 +790,7 @@ func (o *cryptoOrchestrator) Decrypt(ctx context.Context, req crypto.DecryptRequ
 	// 8. Return result with metadata.
 	return crypto.DecryptResult{
 		Plaintext:    decResp.GetPlaintext(),
+		KeyVersion:   kv.GetVersion(),
 		Algorithm:    templateID,
 		ProviderName: prov.Name(),
 		Output:       decResp.GetOutput(),

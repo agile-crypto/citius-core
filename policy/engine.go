@@ -44,7 +44,17 @@ type EvaluatorFactory func(ctx context.Context) (Evaluator, error)
 type Manager interface {
 	CreatePolicy(ctx context.Context, p *Policy) (*Policy, error)
 	GetPolicy(ctx context.Context, name string) (*Policy, error)
-	UpdatePolicy(ctx context.Context, p *Policy) error
+	// UpdatePolicy replaces the stored policy named p.Name() and returns it
+	// as stored. A positive expectedVersion makes the update conditional: it
+	// fails with CodeFailedPrecondition unless the stored version equals it.
+	// Zero means last-writer-wins.
+	//
+	// The condition is best effort, not atomic: Enforcer reads the stored
+	// version and writes the new policy in two Repository calls, so two
+	// concurrent updates with the same expectedVersion can both pass the
+	// check, and the later write wins with the same new version number.
+	// Closing the window needs a compare-and-put on Repository.
+	UpdatePolicy(ctx context.Context, p *Policy, expectedVersion int64) (*Policy, error)
 	DeletePolicy(ctx context.Context, name string) error
 	ListPolicies(ctx context.Context) ([]*Policy, error)
 }

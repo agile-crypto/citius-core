@@ -213,7 +213,7 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 			scope: core.ScopeSpecification{
 				Scope: core.ScopeSignatureStandard,
 				SecurityProps: &core.SecurityProperties{
-					FipsApproved: true,
+					FipsApproved: boolPtr(true),
 				},
 			},
 			want: true,
@@ -224,7 +224,7 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 			scope: core.ScopeSpecification{
 				Scope: core.ScopeSignatureStandard,
 				SecurityProps: &core.SecurityProperties{
-					FipsApproved: true,
+					FipsApproved: boolPtr(true),
 				},
 			},
 			want: false,
@@ -235,7 +235,7 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 			scope: core.ScopeSpecification{
 				Scope: core.ScopeSignatureStandard,
 				SecurityProps: &core.SecurityProperties{
-					QuantumSafe: true,
+					QuantumSafe: boolPtr(true),
 				},
 			},
 			want: true,
@@ -246,7 +246,7 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 			scope: core.ScopeSpecification{
 				Scope: core.ScopeSignatureStandard,
 				SecurityProps: &core.SecurityProperties{
-					QuantumSafe: true,
+					QuantumSafe: boolPtr(true),
 				},
 			},
 			want: false,
@@ -257,8 +257,8 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 			scope: core.ScopeSpecification{
 				Scope: core.ScopeSignatureStandard,
 				SecurityProps: &core.SecurityProperties{
-					FipsApproved: true,
-					QuantumSafe:  true,
+					FipsApproved: boolPtr(true),
+					QuantumSafe:  boolPtr(true),
 				},
 			},
 			want: false,
@@ -277,7 +277,7 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 			scope: core.ScopeSpecification{
 				Scope: core.ScopeSignatureStandard,
 				SecurityProps: &core.SecurityProperties{
-					FipsApproved: true,
+					FipsApproved: boolPtr(true),
 				},
 			},
 			want: false,
@@ -296,7 +296,7 @@ func TestMatchesScope_securityFilters_tabledriven(t *testing.T) {
 			scope: core.ScopeSpecification{
 				Scope: core.ScopeSignatureStandard,
 				SecurityProps: &core.SecurityProperties{
-					FipsApproved: false,
+					FipsApproved: boolPtr(false),
 				},
 			},
 			want: true,

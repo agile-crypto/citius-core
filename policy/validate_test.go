@@ -263,7 +263,7 @@ func TestUpdatePolicy_invalidRulesJSON_rejected(t *testing.T) {
 
 	// Update with invalid rules_json
 	updated := policy.NewPolicy("pol_01_v2", "my-policy", []byte(`{broken json}`))
-	err = enforcer.UpdatePolicy(ctx, updated)
+	_, err = enforcer.UpdatePolicy(ctx, updated, 0)
 	if err == nil {
 		t.Fatal("expected error: invalid rules_json should be rejected at update time")
 	}

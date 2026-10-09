@@ -51,26 +51,26 @@ func NewPrimitiveSpecificProperties(ctx context.Context, opts ...ScopeOption) (P
 	resOpts := []PrimitiveSpecificProperties{}
 	if opt.withNonMalleable || opt.withDeterministic {
 		sigProps := &SignatureProperties{
-			NonMalleable:  opt.withNonMalleable,
-			Deterministic: opt.withDeterministic,
+			NonMalleable:  trueIf(opt.withNonMalleable),
+			Deterministic: trueIf(opt.withDeterministic),
 		}
 		resOpts = append(resOpts, sigProps)
 	}
 	if opt.withNonceMisuseResistance {
 		aeadProps := &AEADProperties{
-			NonceMisuseResistant: opt.withNonceMisuseResistance,
+			NonceMisuseResistant: boolPtr(true),
 		}
 		resOpts = append(resOpts, aeadProps)
 	}
 	if opt.withForwardSecrecy {
 		kaProps := &KeyAgreementProperties{
-			ForwardSecrecy: opt.withForwardSecrecy,
+			ForwardSecrecy: boolPtr(true),
 		}
 		resOpts = append(resOpts, kaProps)
 	}
 	if opt.withMemoryHard {
 		kdfProps := &KDFProperties{
-			MemoryHard: opt.withMemoryHard,
+			MemoryHard: boolPtr(true),
 		}
 		resOpts = append(resOpts, kdfProps)
 	}
@@ -83,9 +83,22 @@ func NewPrimitiveSpecificProperties(ctx context.Context, opts ...ScopeOption) (P
 	return resOpts[0], nil
 }
 
+// trueIf states a property as true when set is true, and leaves it unstated
+// otherwise: an option not given is not a requirement for false.
+func trueIf(set bool) *bool {
+	if !set {
+		return nil
+	}
+	return boolPtr(true)
+}
+
+// The boolean properties below keep the proto's presence: nil means not
+// stated, which is not the same as false. On a request a stated true is a
+// requirement; on a template or key version, what it provides.
+
 type SignatureProperties struct {
-	NonMalleable  bool
-	Deterministic bool
+	NonMalleable  *bool
+	Deterministic *bool
 	// AcceptedDigestHashes lists the digest hashes a prehashed scope accepts,
 	// preferred first (proto: SignatureScopeSpec.accepted_digest_hashes).
 	// On a template it is what the template can sign; on a request, a
@@ -118,7 +131,8 @@ func (s *ScopeSpecification) WithAcceptedDigestHashes(hashes []types.HashAlgorit
 	res := *s
 	props := &SignatureProperties{}
 	if p, ok := s.PrimitiveSpecificProps.(*SignatureProperties); ok && p != nil {
-		*props = *p
+		props.NonMalleable = cloneBool(p.NonMalleable)
+		props.Deterministic = cloneBool(p.Deterministic)
 	}
 	props.AcceptedDigestHashes = append([]types.HashAlgorithm(nil), hashes...)
 	res.PrimitiveSpecificProps = props
@@ -138,7 +152,7 @@ func (s *SignatureProperties) GetScopes() []Scope {
 }
 
 type AEADProperties struct {
-	NonceMisuseResistant bool
+	NonceMisuseResistant *bool
 }
 
 func (a *AEADProperties) defaultPrimitiveSpecificProperties() PrimitiveSpecificProperties {
@@ -154,7 +168,7 @@ func (a *AEADProperties) GetScopes() []Scope {
 }
 
 type KeyAgreementProperties struct {
-	ForwardSecrecy bool
+	ForwardSecrecy *bool
 }
 
 func (k *KeyAgreementProperties) defaultPrimitiveSpecificProperties() PrimitiveSpecificProperties {
@@ -170,7 +184,7 @@ func (k *KeyAgreementProperties) GetScopes() []Scope {
 }
 
 type KDFProperties struct {
-	MemoryHard bool
+	MemoryHard *bool
 }
 
 func (k *KDFProperties) defaultPrimitiveSpecificProperties() PrimitiveSpecificProperties {

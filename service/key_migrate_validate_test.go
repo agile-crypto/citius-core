@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	messagespb "github.com/agile-crypto/citius-api-go/gen/go/messages"
+	types "github.com/agile-crypto/citius-api-go/gen/go/types"
+	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 	"github.com/stretchr/testify/require"
 
 	core "github.com/agile-crypto/citius-core"
@@ -26,6 +28,7 @@ func TestValidateMigration_reportsEveryStrategyWithoutSideEffects(t *testing.T) 
 	ctx := context.Background()
 	f := newMigrateFixture(t)
 	f.backends[migrateSourceInstance].implementation = fipsLevel1()
+	f.backends[migrateSourceInstance].info = &providerpb.ProviderInfo{ProviderType: types.ProviderType_PROVIDER_TYPE_HSM}
 
 	v, err := f.orchestrator.ValidateMigration(ctx, MigrateKeySpec{
 		KeyName: transformKeyName, TargetInstanceID: migrateTargetInstance,
@@ -41,15 +44,17 @@ func TestValidateMigration_reportsEveryStrategyWithoutSideEffects(t *testing.T) 
 	require.Equal(t, migrateSourceInstance, v.SourceInstanceID)
 	require.True(t, v.Extractable)
 	require.True(t, v.SourceImplementation.GetFips_140().GetCertified())
+	require.Equal(t, types.ProviderType_PROVIDER_TYPE_HSM, v.SourceProviderType)
 
 	require.Len(t, v.Options, len(migrationStrategies))
 	got := assessments(v)
 	require.Equal(t, StrategyAssessment{Strategy: strategySwitch, Feasible: true, TargetInstanceID: migrateTargetInstance,
-		SecurityNotes: strategySecurityNotes[strategySwitch]}, got[strategySwitch])
+		SecurityNotes: strategySecurityNotes[strategySwitch], Complexity: 1}, got[strategySwitch])
 	require.Equal(t, StrategyAssessment{Strategy: strategyArchive, Feasible: true, TargetInstanceID: migrateTargetInstance,
-		SecurityNotes: strategySecurityNotes[strategyArchive]}, got[strategyArchive])
+		SecurityNotes: strategySecurityNotes[strategyArchive], Complexity: 3}, got[strategyArchive])
 	for _, s := range migrationStrategies {
 		require.NotEmpty(t, got[s].SecurityNotes, s)
+		require.True(t, got[s].Complexity >= 1 && got[s].Complexity <= 5, "%s complexity %d outside 1..5", s, got[s].Complexity)
 	}
 	require.Contains(t, got[messagespb.MigrationStrategy_MIGRATION_STRATEGY_EXTRACT_AND_IMPORT].Reason, `"software" exports no key`)
 	require.Contains(t, got[messagespb.MigrationStrategy_MIGRATION_STRATEGY_WRAPPED_TRANSFER].Reason, `"software" wraps no key`)
@@ -64,9 +69,11 @@ func TestValidateMigration_reportsEveryStrategyWithoutSideEffects(t *testing.T) 
 	resp := v.ToProto()
 	require.Equal(t, migrateSourceInstance, resp.GetCurrentState().GetInstanceId())
 	require.True(t, resp.GetCurrentState().GetExtractable())
+	require.Equal(t, types.ProviderType_PROVIDER_TYPE_HSM, resp.GetCurrentState().GetProviderType())
 	require.Len(t, resp.GetOptions(), len(migrationStrategies))
 	require.Equal(t, strategySwitch, resp.GetRecommendedStrategy())
 	require.Equal(t, strategySecurityNotes[strategySwitch], resp.GetOptions()[0].GetSecurityNotes())
+	require.Equal(t, int32(1), resp.GetOptions()[0].GetComplexityLevel())
 }
 
 func TestRecommendMigration_speaksOnlyOfTheAssessedStrategies(t *testing.T) {

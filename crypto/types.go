@@ -59,9 +59,13 @@ type VerifyRequest struct {
 type VerifyResult struct {
 	Valid        bool
 	KeyName      string
+	KeyVersion   uint32 // version that was used: the one requested, or the current one
 	Algorithm    string
 	ProviderName string
 	Output       *messages.ProviderOutput // from provider
+	// DigestHash is the hash the verified digest was produced with
+	// (DigestVerify only); unset for Verify.
+	DigestHash types.HashAlgorithm
 }
 
 // DigestSignRequest carries the inputs for a DigestSign operation — signing a
@@ -142,6 +146,7 @@ type DecryptRequest struct {
 
 type DecryptResult struct {
 	Plaintext    []byte
+	KeyVersion   uint32 // version that was used: the one requested, or the current one
 	Algorithm    string
 	ProviderName string
 	Output       *messages.ProviderOutput // from provider (encoding)

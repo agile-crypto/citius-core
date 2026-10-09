@@ -150,3 +150,16 @@ type AlgorithmCapabilityProvider interface {
 type ImplementationDescriber interface {
 	ImplementationProperties() *types.ImplementationProperties
 }
+
+// Describer is an optional interface through which an in-process Backend
+// reports what ProviderIdentityService.GetInfo reports for an out-of-process
+// provider: a description of the provider it is an instance of, not of the
+// instance. Every instance of one provider type must describe it alike;
+// default_implementation holds what is true of all of them, and
+// ImplementationDescriber what is true of this one.
+//
+// A Backend that does not implement it is still served and listed; the
+// discovery API then reports its provider by Type() alone.
+type Describer interface {
+	ProviderInfo() *providerpb.ProviderInfo
+}

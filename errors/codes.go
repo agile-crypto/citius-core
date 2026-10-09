@@ -88,6 +88,9 @@ func IsInvalidArgument(err error) bool { return hasCode(err, CodeInvalidArgument
 // IsFailedPrecondition reports whether err was caused by a lifecycle/state precondition not being met.
 func IsFailedPrecondition(err error) bool { return hasCode(err, CodeFailedPrecondition) }
 
+// IsDataLoss reports whether err was caused by stored data that cannot be read.
+func IsDataLoss(err error) bool { return hasCode(err, CodeDataLoss) }
+
 // hasCode returns true if any error in the chain is an *Error with one of the given codes.
 func hasCode(err error, codes ...Code) bool {
 	var e *Error

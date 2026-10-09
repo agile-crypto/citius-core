@@ -257,11 +257,18 @@ func resolveDigestHashes(ctx context.Context, tmpl *template.Template, spec *cor
 	return spec.WithAcceptedDigestHashes(requested), nil
 }
 
-// buildKeyMetadata projects a key.Key and its current key.Version into the
-// API-facing KeyMetadata. v may be nil; version-scoped fields are
-// then left at their zero values.
-func buildKeyMetadata(ctx context.Context, k *key.Key, v *key.Version) (*KeyMetadata, error) {
-	const op = "service.buildKeyMetadata"
+// keyMetadata projects a key.Key and one of its versions into the API-facing
+// KeyMetadata, with everything the server knows about them: the key's times,
+// the version's template and provider, the template itself, the provider's
+// implementation properties, where the material came from and, for an
+// asymmetric key, its public key. v may be nil; version-scoped fields are
+// then left unset.
+//
+// A field is left unset only when there is nothing to report: a template no
+// longer in the catalogue, a provider instance no longer registered, a
+// symmetric key's public key, or an origin a version did not record.
+func (r *keyOrchestrator) keyMetadata(ctx context.Context, k *key.Key, v *key.Version) (*KeyMetadata, error) {
+	const op = "service.(keyOrchestrator).keyMetadata"
 	md := &KeyMetadata{
 		Name:           k.GetName(),
 		KeyID:          k.GetPublicId(),
@@ -269,30 +276,109 @@ func buildKeyMetadata(ctx context.Context, k *key.Key, v *key.Version) (*KeyMeta
 		Policy:         k.GetPolicyId(),
 		LifecycleState: k.GetState(),
 		Labels:         k.GetLabels(),
+		CreatedTime:    k.GetCreateTime(),
+		UpdatedTime:    k.GetUpdateTime(),
+	}
+	if v == nil {
+		return md, nil
 	}
 
-	if v != nil {
-		if data := v.GetScopeSpecification(); len(data) > 0 {
-			scopeSpec := &core.ScopeSpecification{}
-			if err := scopeSpec.Deserialize(ctx, data); err != nil {
+	if data := v.GetScopeSpecification(); len(data) > 0 {
+		scopeSpec := &core.ScopeSpecification{}
+		if err := scopeSpec.Deserialize(ctx, data); err != nil {
+			return nil, errors.Wrap(ctx, op, err)
+		}
+		md.ScopeSpec = scopeSpec
+	}
+	md.Version = v.GetVersion()
+	md.TemplateID = v.GetTemplateId()
+	md.Provider = v.GetProviderId()
+	md.Extractable = v.GetExtractable()
+
+	tmpl, err := r.templates.Get(ctx, v.GetTemplateId())
+	switch {
+	case err == nil:
+		md.TemplateInfo = tmpl
+		if md.ScopeSpec != nil {
+			// A template that no longer declares the key's scope has no
+			// guarantees to report for it.
+			if md.SecurityGuarantees, _, err = template.SecurityGuaranteesFor(ctx, tmpl, md.ScopeSpec.Scope); err != nil {
 				return nil, errors.Wrap(ctx, op, err)
 			}
-			md.ScopeSpec = scopeSpec
+		}
+	case !errors.IsNotFound(err):
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	prov, err := r.providers.Get(ctx, v.GetProviderId())
+	switch {
+	case err == nil:
+		md.ImplementationProperties = provider.ImplementationOf(prov)
+	case !errors.IsNotFound(err):
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	if md.Origin, err = r.materialOrigin(ctx, v); err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	if md.PublicKeyBytes, md.PublicKeyFormat, err = publicKeyOf(ctx, v); err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return md, nil
+}
+
+// materialOrigin is how v's material first came into existence. Material a
+// version retained or had transferred from an earlier version has that
+// version's origin: a transform or a migration does not create material.
+// UNSPECIFIED when the chain reaches a version that recorded no origin.
+func (r *keyOrchestrator) materialOrigin(ctx context.Context, v *key.Version) (types.KeyOrigin, error) {
+	const op = "service.(keyOrchestrator).materialOrigin"
+	// Each step goes to a strictly earlier version, so the walk ends.
+	for {
+		origin := v.GetOrigin()
+		switch origin.GetKind() {
+		case storepb.KeyOriginKind_KEY_ORIGIN_KIND_GENERATED:
+			return types.KeyOrigin_KEY_ORIGIN_GENERATED, nil
+		case storepb.KeyOriginKind_KEY_ORIGIN_KIND_RETAINED, storepb.KeyOriginKind_KEY_ORIGIN_KIND_TRANSFERRED:
+			source := origin.GetSourceVersion()
+			if source == 0 || source >= v.GetVersion() {
+				return types.KeyOrigin_KEY_ORIGIN_UNSPECIFIED, errors.New(ctx, op, errors.CodeInternal,
+					"version %d of key %s records material from version %d", v.GetVersion(), v.GetKeyId(), source)
+			}
+			earlier, err := r.keys.GetVersion(ctx, v.GetKeyId(), source)
+			if err != nil {
+				return types.KeyOrigin_KEY_ORIGIN_UNSPECIFIED, errors.Wrap(ctx, op, err)
+			}
+			v = earlier
+		default:
+			return types.KeyOrigin_KEY_ORIGIN_UNSPECIFIED, nil
 		}
 	}
+}
 
-	if v != nil {
-		md.Version = v.GetVersion()
-		md.TemplateID = v.GetTemplateId()
-		md.Provider = v.GetProviderId()
-		md.Extractable = v.GetExtractable()
-		//TODO: skip for now. TemplateInfo should be fetched by the application using the template id
-		// if tmpl, err := r.templates.Get(ctx, v.GetTemplateId()); err == nil {
-		// 	md.TemplateInfo = tmpl
-		// }
+// publicKeyOf returns the public key a version's stored material carries,
+// and its format; nil for a symmetric key, which has none. The format is
+// nil when the provider did not record the public key's encoding.
+func publicKeyOf(ctx context.Context, v *key.Version) ([]byte, *types.KeyFormat, error) {
+	const op = "service.publicKeyOf"
+	var stored providerpb.GenerateKeyResponse
+	if err := proto.Unmarshal(v.GetKeyMaterial(), &stored); err != nil {
+		return nil, nil, errors.Wrap(ctx, op, err, errors.WithMessage("stored key material is not a GenerateKeyResponse"))
 	}
-
-	return md, nil
+	public := stored.GetPublicKeyBytes()
+	if len(public) == 0 {
+		return nil, nil, nil
+	}
+	var format *types.KeyFormat
+	switch stored.GetPublicKeyEncoding() {
+	case providerpb.PublicKeyEncoding_PUBLIC_KEY_ENCODING_SPKI:
+		format = types.KeyFormat_KEY_FORMAT_SPKI.Enum()
+	case providerpb.PublicKeyEncoding_PUBLIC_KEY_ENCODING_RAW:
+		format = types.KeyFormat_KEY_FORMAT_RAW.Enum()
+	case providerpb.PublicKeyEncoding_PUBLIC_KEY_ENCODING_PEM:
+		format = types.KeyFormat_KEY_FORMAT_PEM.Enum()
+	case providerpb.PublicKeyEncoding_PUBLIC_KEY_ENCODING_UNSPECIFIED:
+		// The provider recorded no encoding: the format is not known.
+	}
+	return append([]byte(nil), public...), format, nil
 }
 
 func computeVersionID(keyID string, version uint32) string {
@@ -364,11 +450,16 @@ func (r *keyOrchestrator) generateAndPersistKey(
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	if err := r.keys.CreateKey(ctx, k, v); err != nil {
+	if err = r.keys.CreateKey(ctx, k, v); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
 
-	return buildKeyMetadata(ctx, k, v)
+	// Read the key back: the repository stamps its creation time.
+	stored, err := r.keys.GetKeyByID(ctx, keyID)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return r.keyMetadata(ctx, stored, v)
 }
 
 func (r *keyOrchestrator) ReadKey(ctx context.Context, keyName string, version uint32) (*KeyMetadata, error) {
@@ -386,7 +477,7 @@ func (r *keyOrchestrator) ReadKey(ctx context.Context, keyName string, version u
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	return buildKeyMetadata(ctx, k, v)
+	return r.keyMetadata(ctx, k, v)
 }
 
 func (r *keyOrchestrator) ListKeys(ctx context.Context) ([]*KeyMetadata, error) {
@@ -401,7 +492,7 @@ func (r *keyOrchestrator) ListKeys(ctx context.Context) ([]*KeyMetadata, error) 
 		if verr != nil {
 			return nil, errors.Wrap(ctx, op, verr)
 		}
-		md, merr := buildKeyMetadata(ctx, k, v)
+		md, merr := r.keyMetadata(ctx, k, v)
 		if merr != nil {
 			return nil, errors.Wrap(ctx, op, merr)
 		}
@@ -614,7 +705,14 @@ func (r *keyOrchestrator) appendVersion(ctx context.Context, keyO *key.Key, last
 	// Update the state of previous version
 	// TODO: check how/when this hsould be done and the expected transition
 	// TODO: provide method in repository to update state
-	return buildKeyMetadata(ctx, keyO, newVersion)
+
+	// Read the key back: adding the version moved its current version and
+	// its update time.
+	updated, err := r.keys.GetKeyByID(ctx, keyO.GetPublicId())
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return r.keyMetadata(ctx, updated, newVersion)
 }
 
 // transformKeyMaterial returns the stored payload for the new key version:

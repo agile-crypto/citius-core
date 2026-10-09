@@ -5,6 +5,7 @@ import (
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
+	providerpb "github.com/agile-crypto/citius-provider-go/gen/provider"
 )
 
 // ImplementationOf returns a copy of p's ImplementationProperties, or nil if
@@ -16,6 +17,17 @@ func ImplementationOf(p Backend) *types.ImplementationProperties {
 	if id, ok := p.(ImplementationDescriber); ok {
 		if props := id.ImplementationProperties(); props != nil {
 			return proto.CloneOf(props)
+		}
+	}
+	return nil
+}
+
+// InfoOf returns a copy of what p reports about its provider, or nil if p
+// does not implement Describer.
+func InfoOf(p Backend) *providerpb.ProviderInfo {
+	if d, ok := p.(Describer); ok {
+		if info := d.ProviderInfo(); info != nil {
+			return proto.CloneOf(info)
 		}
 	}
 	return nil
