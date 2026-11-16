@@ -15,7 +15,7 @@ import (
 // catalog used for testing
 func catalogPath() string {
 	_, currentFile, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(currentFile), "data", "standard_algorithms.json")
+	return filepath.Join(filepath.Dir(currentFile), "..", "data", "standard_algorithms.json")
 }
 
 // readCatalog reads the standard_algorithms.json file for test helpers.
