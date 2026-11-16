@@ -177,6 +177,43 @@ func TestSealWrap_preservedThroughInmemAndView(t *testing.T) {
 	assert.False(t, e.SealWrap)
 }
 
+func TestListAll_descendsIntoFolders(t *testing.T) {
+	ctx := context.Background()
+	s := storage.NewInmemStorage()
+	put(t, s, "a", "b/c", "b/d/e", "b/d/f", "bx")
+
+	tests := []struct {
+		prefix string
+		want   []string
+	}{
+		{"", []string{"a", "b/c", "b/d/e", "b/d/f", "bx"}},
+		{"b/", []string{"b/c", "b/d/e", "b/d/f"}},
+		{"b/d/", []string{"b/d/e", "b/d/f"}},
+		{"none/", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.prefix, func(t *testing.T) {
+			got, err := storage.ListAll(ctx, s, tt.prefix)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFolderPrefix(t *testing.T) {
+	tests := map[string]string{
+		"":       "",
+		"/":      "",
+		"test":   "test/",
+		"test/":  "test/",
+		"test//": "test/",
+		"a/b":    "a/b/",
+	}
+	for in, want := range tests {
+		assert.Equal(t, want, storage.FolderPrefix(in), "FolderPrefix(%q)", in)
+	}
+}
+
 func TestNewInmemStorage_optionsPassedThrough(t *testing.T) {
 	ctx := context.Background()
 	s := storage.NewInmemStorage(storage.WithMaxValueSize(3))

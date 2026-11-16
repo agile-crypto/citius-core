@@ -8,6 +8,8 @@ import (
 
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/storage"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newTestPolicy(name string) *policy.Policy {
@@ -88,6 +90,76 @@ func Test_PolicyStorageRepository_ListPolicies_empty(t *testing.T) {
 	if names == nil {
 		t.Error("ListPolicies should return empty slice, not nil")
 	}
+}
+
+func Test_PolicyStorageRepository_ListPolicies_hierarchicalPaths_returnsAll(t *testing.T) {
+	r := repoFn()
+	ctx := context.Background()
+	names := []string{
+		"test/namespace1/test-policy",
+		"test/namespace1/other-policy",
+		"test/namespace2/test-policy",
+		"prod/namespace1/test-policy",
+		"prod/test-policy",
+		"top-level-policy",
+	}
+	for _, n := range names {
+		require.NoError(t, r.PutPolicy(ctx, newTestPolicy(n)))
+	}
+
+	got, err := r.ListPolicies(ctx)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, names, got)
+}
+
+func Test_PolicyStorageRepository_ListPoliciesWithPrefix(t *testing.T) {
+	r := repoFn()
+	ctx := context.Background()
+	all := []string{
+		"test/namespace1/test-policy",
+		"test/namespace1/other-policy",
+		"test/namespace2/test-policy",
+		"test-policy",
+		"testing/namespace1/test-policy",
+		"prod/namespace1/test-policy",
+		"prod/test-policy",
+	}
+	for _, n := range all {
+		require.NoError(t, r.PutPolicy(ctx, newTestPolicy(n)))
+	}
+
+	tests := []struct {
+		name   string
+		prefix string
+		want   []string
+	}{
+		{"top-level folder", "test", []string{"test/namespace1/test-policy", "test/namespace1/other-policy", "test/namespace2/test-policy"}},
+		{"trailing separator", "test/", []string{"test/namespace1/test-policy", "test/namespace1/other-policy", "test/namespace2/test-policy"}},
+		{"nested folder", "test/namespace1", []string{"test/namespace1/test-policy", "test/namespace1/other-policy"}},
+		{"nested folder with trailing separator", "test/namespace1/", []string{"test/namespace1/test-policy", "test/namespace1/other-policy"}},
+		{"other branch", "prod", []string{"prod/namespace1/test-policy", "prod/test-policy"}},
+		{"partial folder name", "tes", nil},
+		{"partial nested folder name", "test/namespace", nil},
+		{"full policy path is not a folder", "test/namespace1/test-policy", nil},
+		{"unknown folder", "staging", nil},
+		{"empty prefix returns all", "", all},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := r.ListPoliciesWithPrefix(ctx, tt.prefix)
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.ElementsMatch(t, tt.want, got)
+		})
+	}
+}
+
+func Test_PolicyStorageRepository_ListPoliciesWithPrefix_relativePath_rejected(t *testing.T) {
+	r := repoFn()
+	require.NoError(t, r.PutPolicy(context.Background(), newTestPolicy("test/namespace1/p")))
+
+	_, err := r.ListPoliciesWithPrefix(context.Background(), "test/..")
+	require.Error(t, err)
 }
 
 func Test_PolicyStorageRepository_PutPolicy_nil_returnsError(t *testing.T) {

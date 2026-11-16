@@ -408,16 +408,10 @@ func (r *StorageRepository) ListKeys(ctx context.Context) ([]*Key, error) {
 
 func (r *StorageRepository) ListKeysWithPrefix(ctx context.Context, prefix string) ([]*Key, error) {
 	const op errors.Op = "key.(StorageRepository).ListKeysWithPrefix"
-	sep := string(storage.FolderSeparator)
-	folder := strings.TrimRight(prefix, sep)
-	if folder != "" {
-		folder += sep
-	}
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	out, err := r.listKeysUnder(ctx, folder)
+	out, err := r.listKeysUnder(ctx, storage.FolderPrefix(prefix))
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -427,7 +421,7 @@ func (r *StorageRepository) ListKeysWithPrefix(ctx context.Context, prefix strin
 // listKeysUnder loads all keys stored under folder (which must be empty or end with
 // the folder separator). Caller must hold the lock.
 func (r *StorageRepository) listKeysUnder(ctx context.Context, folder string) ([]*Key, error) {
-	ids, err := listAll(ctx, r.keys, folder)
+	ids, err := storage.ListAll(ctx, r.keys, folder)
 	if err != nil {
 		return nil, err
 	}
@@ -438,30 +432,6 @@ func (r *StorageRepository) listKeysUnder(ctx context.Context, folder string) ([
 			return nil, err
 		}
 		out = append(out, k.Clone())
-	}
-	return out, nil
-}
-
-// listAll returns the names (storage paths relative to the view, prefix included) of
-// all entries under prefix, descending into folders. It returns names only, not entry
-// contents. storage.List only returns the immediate children of a prefix, with nested
-// entries collapsed into a single "folder/" item.
-func listAll(ctx context.Context, view storage.Storage, prefix string) ([]string, error) {
-	children, err := view.List(ctx, prefix)
-	if err != nil {
-		return nil, err
-	}
-	var out []string
-	for _, child := range children {
-		if strings.HasSuffix(child, string(storage.FolderSeparator)) {
-			nested, err := listAll(ctx, view, prefix+child)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, nested...)
-			continue
-		}
-		out = append(out, prefix+child)
 	}
 	return out, nil
 }

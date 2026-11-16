@@ -89,9 +89,31 @@ func (r *StorageRepository) ListPolicies(ctx context.Context) ([]string, error) 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	names, err := r.policies.List(ctx, "")
+	names, err := r.listPoliciesUnder(ctx, "")
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
+	}
+	return names, nil
+}
+
+func (r *StorageRepository) ListPoliciesWithPrefix(ctx context.Context, prefix string) ([]string, error) {
+	const op errors.Op = "policy.(StorageRepository).ListPoliciesWithPrefix"
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	names, err := r.listPoliciesUnder(ctx, storage.FolderPrefix(prefix))
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return names, nil
+}
+
+// listPoliciesUnder returns the names of all policies stored under folder (which must
+// be empty or end with the folder separator), never nil. Caller must hold the lock.
+func (r *StorageRepository) listPoliciesUnder(ctx context.Context, folder string) ([]string, error) {
+	names, err := storage.ListAll(ctx, r.policies, folder)
+	if err != nil {
+		return nil, err
 	}
 	if names == nil {
 		names = []string{}
