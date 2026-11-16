@@ -61,6 +61,12 @@ func (s *InmemStorage) Put(ctx context.Context, entry *Entry) error {
 	if s.entries == nil {
 		s.entries = make(map[string]Entry)
 	}
+	if _, exists := s.entries[entry.Key]; !exists && s.maxEntries > 0 && len(s.entries) > s.maxEntries-1 {
+		return ErrStorageFull
+	}
+	if s.maxValueSize > 0 && len(entry.Value) > s.maxValueSize {
+		return ErrValueTooLarge
+	}
 	s.entries[entry.Key] = Entry{Key: entry.Key, Value: clone(entry.Value), SealWrap: entry.SealWrap}
 	return nil
 }
@@ -98,7 +104,7 @@ func (s *InmemStorage) List(ctx context.Context, prefix string) ([]string, error
 	var out []string
 	seen := make(map[string]struct{})
 	for _, rest := range matches {
-		if i := strings.IndexByte(rest, '/'); i >= 0 {
+		if i := strings.IndexByte(rest, FolderSeparator); i >= 0 {
 			folder := rest[:i+1]
 			if _, ok := seen[folder]; ok {
 				continue

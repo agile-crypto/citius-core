@@ -19,6 +19,15 @@ var ErrRelativePath = errors.New("relative paths not supported")
 // ErrNilEntry is returned when Put is called with a nil entry.
 var ErrNilEntry = errors.New("cannot write nil entry")
 
+// ErrStorageFull is returned when the storage has reached its capacitiy limit
+var ErrStorageFull = errors.New("storage is full")
+
+// ErrValueTooLarge is returned when the byte-value to store exceeds the limit
+var ErrValueTooLarge = errors.New("byte-value is too large")
+
+// Folder separator in the key-value store. Keys are hierarchical paths.
+const FolderSeparator byte = '/'
+
 // Entry is one item in a Storage.
 type Entry struct {
 	Key   string

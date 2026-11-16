@@ -176,3 +176,99 @@ func TestSealWrap_preservedThroughInmemAndView(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, e.SealWrap)
 }
+
+func TestNewInmemStorage_optionsPassedThrough(t *testing.T) {
+	ctx := context.Background()
+	s := storage.NewInmemStorage(storage.WithMaxValueSize(3))
+
+	require.NoError(t, s.Put(ctx, &storage.Entry{Key: "ok", Value: []byte("abc")}))
+	err := s.Put(ctx, &storage.Entry{Key: "big", Value: []byte("abcd")})
+	assert.ErrorIs(t, err, storage.ErrValueTooLarge)
+}
+
+func TestInmem_put_valueSizeBound(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name    string
+		max     int
+		size    int
+		wantErr error
+	}{
+		{"under limit", 4, 3, nil},
+		{"at limit", 4, 4, nil},
+		{"over limit", 4, 5, storage.ErrValueTooLarge},
+		{"zero means unbounded", 0, 1 << 16, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := storage.NewInmemStorage(storage.WithMaxValueSize(tt.max))
+			err := s.Put(ctx, &storage.Entry{Key: "k", Value: make([]byte, tt.size)})
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+			} else {
+				assert.ErrorIs(t, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestInmem_put_valueTooLarge_notStored(t *testing.T) {
+	ctx := context.Background()
+	s := storage.NewInmemStorage(storage.WithMaxValueSize(2))
+
+	require.ErrorIs(t, s.Put(ctx, &storage.Entry{Key: "k", Value: []byte("abc")}), storage.ErrValueTooLarge)
+	e, err := s.Get(ctx, "k")
+	require.NoError(t, err)
+	assert.Nil(t, e)
+}
+
+func TestInmem_put_entryBound(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		name    string
+		max     int
+		keys    int
+		wantErr error
+	}{
+		{"under limit", 3, 2, nil},
+		{"at limit", 2, 2, nil},
+		{"over limit", 2, 3, storage.ErrStorageFull},
+		{"zero means unbounded", 0, 50, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := storage.NewInmemStorage(storage.WithMaxEntries(tt.max))
+			for i := 0; i < tt.keys-1; i++ {
+				require.NoError(t, s.Put(ctx, &storage.Entry{Key: string(rune('a' + i)), Value: []byte("v")}))
+			}
+			err := s.Put(ctx, &storage.Entry{Key: "last", Value: []byte("v")})
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+			} else {
+				assert.ErrorIs(t, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestInmem_put_entryBound_overwriteAtCapacity(t *testing.T) {
+	ctx := context.Background()
+	s := storage.NewInmemStorage(storage.WithMaxEntries(2))
+	put(t, s, "a", "b")
+
+	require.NoError(t, s.Put(ctx, &storage.Entry{Key: "a", Value: []byte("v2")}))
+	e, err := s.Get(ctx, "a")
+	require.NoError(t, err)
+	assert.Equal(t, []byte("v2"), e.Value)
+}
+
+func TestInmem_put_entryRejected_notStored(t *testing.T) {
+	ctx := context.Background()
+	s := storage.NewInmemStorage(storage.WithMaxEntries(1))
+	put(t, s, "a")
+
+	require.ErrorIs(t, s.Put(ctx, &storage.Entry{Key: "b", Value: []byte("v")}), storage.ErrStorageFull)
+	e, err := s.Get(ctx, "b")
+	require.NoError(t, err)
+	assert.Nil(t, e)
+}
