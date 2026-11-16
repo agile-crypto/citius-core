@@ -399,25 +399,53 @@ func (r *StorageRepository) ListKeys(ctx context.Context) ([]*Key, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	ids, err := listAll(ctx, r.keys, "")
+	out, err := r.listKeysUnder(ctx, "")
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
+	return out, nil
+}
 
+func (r *StorageRepository) ListKeysWithPrefix(ctx context.Context, prefix string) ([]*Key, error) {
+	const op errors.Op = "key.(StorageRepository).ListKeysWithPrefix"
+	sep := string(storage.FolderSeparator)
+	folder := strings.TrimRight(prefix, sep)
+	if folder != "" {
+		folder += sep
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	out, err := r.listKeysUnder(ctx, folder)
+	if err != nil {
+		return nil, errors.Wrap(ctx, op, err)
+	}
+	return out, nil
+}
+
+// listKeysUnder loads all keys stored under folder (which must be empty or end with
+// the folder separator). Caller must hold the lock.
+func (r *StorageRepository) listKeysUnder(ctx context.Context, folder string) ([]*Key, error) {
+	ids, err := listAll(ctx, r.keys, folder)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]*Key, 0, len(ids))
 	for _, id := range ids {
 		k, err := r.getKey(ctx, id)
 		if err != nil {
-			return nil, errors.Wrap(ctx, op, err)
+			return nil, err
 		}
 		out = append(out, k.Clone())
 	}
 	return out, nil
 }
 
-// listAll returns the full keys (relative to the view) of all entries under prefix,
-// descending into folders. storage.List only returns the immediate children of
-// a prefix, with nested entries collapsed into a single "folder/" item.
+// listAll returns the names (storage paths relative to the view, prefix included) of
+// all entries under prefix, descending into folders. It returns names only, not entry
+// contents. storage.List only returns the immediate children of a prefix, with nested
+// entries collapsed into a single "folder/" item.
 func listAll(ctx context.Context, view storage.Storage, prefix string) ([]string, error) {
 	children, err := view.List(ctx, prefix)
 	if err != nil {

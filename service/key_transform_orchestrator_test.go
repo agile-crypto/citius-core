@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
@@ -378,6 +379,14 @@ func (r *fakeKeyRepository) GetKeyByName(ctx context.Context, name string) (*key
 }
 
 func (r *fakeKeyRepository) ListKeys(context.Context) ([]*key.Key, error) {
+	return []*key.Key{r.key.Clone()}, nil
+}
+
+func (r *fakeKeyRepository) ListKeysWithPrefix(_ context.Context, prefix string) ([]*key.Key, error) {
+	folder := strings.TrimRight(prefix, "/")
+	if folder != "" && !strings.HasPrefix(r.key.GetPublicId(), folder+"/") {
+		return []*key.Key{}, nil
+	}
 	return []*key.Key{r.key.Clone()}, nil
 }
 

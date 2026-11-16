@@ -342,6 +342,63 @@ func Test_StorageRepository_ListKeys_hierarchicalPaths_returnsAll(t *testing.T) 
 	assert.ElementsMatch(t, paths, gotNames)
 }
 
+func Test_StorageRepository_ListKeysWithPrefix(t *testing.T) {
+	r := repoFn()
+	ctx := context.Background()
+	for _, p := range []string{
+		"test/namespace1/test-key",
+		"test/namespace1/other-key",
+		"test/namespace2/test-key",
+		"test-key",
+		"testing/namespace1/test-key",
+		"prod/namespace1/test-key",
+		"prod/test-key",
+	} {
+		mustCreateKey(t, r, p, p, core.ScopeSignatureStandard)
+	}
+
+	all := []string{
+		"test/namespace1/test-key", "test/namespace1/other-key", "test/namespace2/test-key",
+		"test-key", "testing/namespace1/test-key", "prod/namespace1/test-key", "prod/test-key",
+	}
+	tests := []struct {
+		name   string
+		prefix string
+		want   []string
+	}{
+		{"top-level folder", "test", []string{"test/namespace1/test-key", "test/namespace1/other-key", "test/namespace2/test-key"}},
+		{"trailing separator", "test/", []string{"test/namespace1/test-key", "test/namespace1/other-key", "test/namespace2/test-key"}},
+		{"nested folder", "test/namespace1", []string{"test/namespace1/test-key", "test/namespace1/other-key"}},
+		{"nested folder with trailing separator", "test/namespace1/", []string{"test/namespace1/test-key", "test/namespace1/other-key"}},
+		{"other branch", "prod", []string{"prod/namespace1/test-key", "prod/test-key"}},
+		{"partial folder name", "tes", nil},
+		{"partial nested folder name", "test/namespace", nil},
+		{"full key path is not a folder", "test/namespace1/test-key", nil},
+		{"unknown folder", "staging", nil},
+		{"empty prefix returns all", "", all},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			keys, err := r.ListKeysWithPrefix(ctx, tt.prefix)
+			require.NoError(t, err)
+			require.NotNil(t, keys)
+			got := make([]string, 0, len(keys))
+			for _, k := range keys {
+				got = append(got, k.PublicId)
+			}
+			assert.ElementsMatch(t, tt.want, got)
+		})
+	}
+}
+
+func Test_StorageRepository_ListKeysWithPrefix_relativePath_rejected(t *testing.T) {
+	r := repoFn()
+	mustCreateKey(t, r, "test/namespace1/test-key", "k", core.ScopeSignatureStandard)
+
+	_, err := r.ListKeysWithPrefix(context.Background(), "test/..")
+	require.Error(t, err)
+}
+
 func Test_StorageRepository_ListKeys_empty(t *testing.T) {
 	r := repoFn()
 	keys, err := r.ListKeys(context.Background())
