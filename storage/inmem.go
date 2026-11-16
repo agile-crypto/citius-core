@@ -15,13 +15,20 @@ import (
 type InmemStorage struct {
 	mu      sync.RWMutex
 	entries map[string]Entry
+
+	maxValueSize int // maximal size for an entry's value buffer, 0 means unbounded
+	maxEntries   int // maximal number of keys, 0 means unbounded
 }
 
 var _ Storage = (*InmemStorage)(nil)
 
 // NewInmemStorage returns an empty InmemStorage.
-func NewInmemStorage() *InmemStorage {
-	return &InmemStorage{}
+// Available options:
+//   - WithMaxValueSize(int): set the maximal size for an entry's value, default: 0 (unbounded)
+//   - WithMaxEntries(int): set the maximal number of entries, default: 0 (unbounded)
+func NewInmemStorage(opt ...Option) *InmemStorage {
+	opts := getOpts(opt...)
+	return &InmemStorage{maxValueSize: opts.withMaxValueSize, maxEntries: opts.withMaxEntries}
 }
 
 // Get implements Storage.
