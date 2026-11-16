@@ -134,7 +134,7 @@ func TestProvider_SupportedAlgorithms_hasKeyAlgorithms(t *testing.T) {
 // different package, so it cannot be reused directly).
 func standardCatalogPath() string {
 	_, currentFile, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "proto", "standard_algorithms.json")
+	return filepath.Join(filepath.Dir(currentFile), "..", "..", "data", "standard_algorithms.json")
 }
 
 // assertAdvertisesGeneratedEncoding checks that the stored-payload encoding
