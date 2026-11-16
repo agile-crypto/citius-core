@@ -315,6 +315,33 @@ func Test_StorageRepository_ListKeys_multipleKeys(t *testing.T) {
 	}
 }
 
+func Test_StorageRepository_ListKeys_hierarchicalPaths_returnsAll(t *testing.T) {
+	r := repoFn()
+	ctx := context.Background()
+	paths := []string{
+		"test/namespace1/test-key",
+		"test/namespace1/other-key",
+		"test/namespace2/test-key",
+		"prod/namespace1/test-key",
+		"prod/test-key",
+		"top-level-key",
+	}
+	for _, p := range paths {
+		mustCreateKey(t, r, p, p, core.ScopeSignatureStandard)
+	}
+
+	keys, err := r.ListKeys(ctx)
+	require.NoError(t, err)
+
+	var gotIDs, gotNames []string
+	for _, k := range keys {
+		gotIDs = append(gotIDs, k.PublicId)
+		gotNames = append(gotNames, k.Name)
+	}
+	assert.ElementsMatch(t, paths, gotIDs)
+	assert.ElementsMatch(t, paths, gotNames)
+}
+
 func Test_StorageRepository_ListKeys_empty(t *testing.T) {
 	r := repoFn()
 	keys, err := r.ListKeys(context.Background())

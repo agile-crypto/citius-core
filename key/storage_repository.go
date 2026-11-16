@@ -399,7 +399,7 @@ func (r *StorageRepository) ListKeys(ctx context.Context) ([]*Key, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	ids, err := r.keys.List(ctx, "")
+	ids, err := listAll(ctx, r.keys, "")
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -411,6 +411,29 @@ func (r *StorageRepository) ListKeys(ctx context.Context) ([]*Key, error) {
 			return nil, errors.Wrap(ctx, op, err)
 		}
 		out = append(out, k.Clone())
+	}
+	return out, nil
+}
+
+// listAll returns the full keys (relative to the view) of all entries under prefix,
+// descending into folders. storage.List only returns the immediate children of
+// a prefix, with nested entries collapsed into a single "folder/" item.
+func listAll(ctx context.Context, view storage.Storage, prefix string) ([]string, error) {
+	children, err := view.List(ctx, prefix)
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, child := range children {
+		if strings.HasSuffix(child, string(storage.FolderSeparator)) {
+			nested, err := listAll(ctx, view, prefix+child)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, nested...)
+			continue
+		}
+		out = append(out, prefix+child)
 	}
 	return out, nil
 }
