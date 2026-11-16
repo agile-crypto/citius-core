@@ -12,13 +12,10 @@ import (
 )
 
 // catalogPath returns the absolute path to the standard_algorithms.json
-// catalog. These tests live here (rather than in citius-core, where
-// LoadStandardCatalog/ParseStandardCatalog are actually defined) because they
-// need filesystem access to citius-server's real production catalog --
-// citius-core is a standalone module now and has no copy of it.
+// catalog used for testing
 func catalogPath() string {
 	_, currentFile, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "proto", "standard_algorithms.json")
+	return filepath.Join(filepath.Dir(currentFile), "data", "standard_algorithms.json")
 }
 
 // readCatalog reads the standard_algorithms.json file for test helpers.
