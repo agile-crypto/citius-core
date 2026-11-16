@@ -1,4 +1,4 @@
-package service
+package crypto
 
 import (
 	"context"
@@ -12,6 +12,22 @@ import (
 	"github.com/agile-crypto/citius-core/template"
 	"github.com/stretchr/testify/require"
 )
+
+const (
+	hashSHA256 = types.HashAlgorithm_HASH_ALGORITHM_SHA256
+	hashSHA384 = types.HashAlgorithm_HASH_ALGORITHM_SHA384
+	hashSHA512 = types.HashAlgorithm_HASH_ALGORITHM_SHA512
+)
+
+func prehashedSpec(hashes ...types.HashAlgorithm) *core.ScopeSpecification {
+	spec := &core.ScopeSpecification{Scope: core.ScopeSignaturePrehashed}
+	if len(hashes) == 0 {
+		return spec
+	}
+	return spec.WithAcceptedDigestHashes(hashes)
+}
+
+func codePtr(c errors.Code) *errors.Code { return &c }
 
 func TestValidateSignatureScopeParams(t *testing.T) {
 	noContext := crypto.SignatureScopeFields{NoContext: &types.NoParams{}}
@@ -132,4 +148,12 @@ func TestValidateDigestHash(t *testing.T) {
 			requireCoreErrorCode(t, err, *tt.wantCode)
 		})
 	}
+}
+
+func requireCoreErrorCode(t *testing.T, err error, want errors.Code) {
+	t.Helper()
+	require.Error(t, err)
+	var coreErr *errors.Error
+	require.True(t, errors.As(err, &coreErr))
+	require.Equal(t, want, coreErr.Code)
 }

@@ -1,10 +1,11 @@
-package service
+package crypto
 
 import (
 	"context"
 	"fmt"
 	"slices"
 
+	metapb "github.com/agile-crypto/citius-api-go/gen/go/messages"
 	types "github.com/agile-crypto/citius-api-go/gen/go/types"
 	core "github.com/agile-crypto/citius-core"
 	"github.com/agile-crypto/citius-core/crypto"
@@ -35,7 +36,7 @@ func NewCryptoOrchestrator(
 	pr provider.Registry,
 	tr template.Registry,
 ) (CryptoOrchestrator, error) {
-	const op errors.Op = "service.NewCryptoOrchestrator"
+	const op errors.Op = "service.crypto.NewCryptoOrchestrator"
 	ctx := context.Background()
 
 	if kr == nil {
@@ -104,7 +105,7 @@ func applyDigestVerifyScopeParams(req crypto.DigestVerifyRequest, provReq *provi
 }
 
 func (o *cryptoOrchestrator) Sign(ctx context.Context, req crypto.SignRequest) (crypto.SignResult, error) {
-	const op errors.Op = "service.(cryptoOrchestrator).Sign"
+	const op errors.Op = "service.crypto.(cryptoOrchestrator).Sign"
 
 	// 1. Validate request.
 	if req.KeyName == "" {
@@ -214,7 +215,7 @@ func callSignerAndValidate(ctx context.Context, op errors.Op, signer provider.Si
 }
 
 func (o *cryptoOrchestrator) Verify(ctx context.Context, req crypto.VerifyRequest) (crypto.VerifyResult, error) {
-	const op errors.Op = "service.(cryptoOrchestrator).Verify"
+	const op errors.Op = "service.crypto.(cryptoOrchestrator).Verify"
 
 	// 1. Validate request.
 	if req.KeyName == "" {
@@ -321,6 +322,23 @@ func callVerifierAndValidate(ctx context.Context, op errors.Op, verifier provide
 	return verifyResp, nil
 }
 
+// requireProviderOutput enforces the ProviderOutput contract from
+// metadata.proto: every successful provider response MUST set
+// algorithm_output explicitly.  An unset oneof means the provider forgot to
+// set it — a provider-contract violation, not a caller error — so the core
+// rejects the response rather than passing a malformed OperationMetadata
+// downstream.
+//
+// This distinguishes "nothing to report" (NoOutput / NoOutputUnencoded,
+// always present) from "provider bug" (algorithm_output left nil).
+func requireProviderOutput(ctx context.Context, op errors.Op, out *metapb.ProviderOutput) error {
+	if out == nil || out.GetAlgorithmOutput() == nil {
+		return errors.New(ctx, op, errors.CodeInternal,
+			"provider returned no algorithm_output — provider contract violation")
+	}
+	return nil
+}
+
 // VerifyWithPublicKey verifies a signature against a caller-supplied public
 // key — no stored key is involved. The request alone defines the template and
 // the policy; the provider is the one the request pins, or else the best
@@ -328,7 +346,7 @@ func callVerifierAndValidate(ctx context.Context, op errors.Op, verifier provide
 // requirements. The public key must be in the format that provider parses for
 // the template (see publicKeyFormats).
 func (o *cryptoOrchestrator) VerifyWithPublicKey(ctx context.Context, req crypto.VerifyWithPublicKeyRequest) (crypto.VerifyWithPublicKeyResult, error) {
-	const op errors.Op = "service.(cryptoOrchestrator).VerifyWithPublicKey"
+	const op errors.Op = "service.crypto.(cryptoOrchestrator).VerifyWithPublicKey"
 
 	// 1. Validate request.
 	if len(req.PublicKey) == 0 {
@@ -433,7 +451,7 @@ func applyVerifyScopeParams(sf crypto.SignatureScopeFields, provReq *providerpb.
 // either (see crypto.DigestSignRequest and the north-bound DigestSignRequest,
 // neither of which carries an algorithm field).
 func (o *cryptoOrchestrator) DigestSign(ctx context.Context, req crypto.DigestSignRequest) (crypto.SignResult, error) {
-	const op errors.Op = "service.(cryptoOrchestrator).DigestSign"
+	const op errors.Op = "service.crypto.(cryptoOrchestrator).DigestSign"
 
 	// 1. Validate request.
 	if req.KeyName == "" {
@@ -548,7 +566,7 @@ func callDigestSignerAndValidate(ctx context.Context, op errors.Op, signer provi
 
 // DigestVerify verifies a signature over a pre-computed digest.
 func (o *cryptoOrchestrator) DigestVerify(ctx context.Context, req crypto.DigestVerifyRequest) (crypto.VerifyResult, error) {
-	const op errors.Op = "service.(cryptoOrchestrator).DigestVerify"
+	const op errors.Op = "service.crypto.(cryptoOrchestrator).DigestVerify"
 
 	// 1. Validate request.
 	if req.KeyName == "" {
@@ -693,7 +711,7 @@ func applyDecryptScopeParams(sf crypto.EncryptionScopeFields, provReq *providerp
 }
 
 func (o *cryptoOrchestrator) Encrypt(ctx context.Context, req crypto.EncryptRequest) (crypto.EncryptResult, error) {
-	const op errors.Op = "service.(cryptoOrchestrator).Encrypt"
+	const op errors.Op = "service.crypto.(cryptoOrchestrator).Encrypt"
 
 	// 1. Validate request.
 	if req.KeyName == "" {
@@ -790,7 +808,7 @@ func (o *cryptoOrchestrator) Encrypt(ctx context.Context, req crypto.EncryptRequ
 }
 
 func (o *cryptoOrchestrator) Decrypt(ctx context.Context, req crypto.DecryptRequest) (crypto.DecryptResult, error) {
-	const op errors.Op = "service.(cryptoOrchestrator).Decrypt"
+	const op errors.Op = "service.crypto.(cryptoOrchestrator).Decrypt"
 
 	// 1. Validate request.
 	if req.KeyName == "" {
@@ -895,43 +913,43 @@ func (o *cryptoOrchestrator) Decrypt(ctx context.Context, req crypto.DecryptRequ
 
 func (o *cryptoOrchestrator) WrapKey(ctx context.Context, _ crypto.WrapKeyRequest) (crypto.WrapKeyResult, error) {
 	return crypto.WrapKeyResult{}, errors.New(ctx,
-		"service.(cryptoOrchestrator).WrapKey", errors.CodeNotImplemented,
+		"service.crypto.(cryptoOrchestrator).WrapKey", errors.CodeNotImplemented,
 		"WrapKey is not yet implemented")
 }
 
 func (o *cryptoOrchestrator) UnwrapKey(ctx context.Context, _ crypto.UnwrapKeyRequest) (crypto.UnwrapKeyResult, error) {
 	return crypto.UnwrapKeyResult{}, errors.New(ctx,
-		"service.(cryptoOrchestrator).UnwrapKey", errors.CodeNotImplemented,
+		"service.crypto.(cryptoOrchestrator).UnwrapKey", errors.CodeNotImplemented,
 		"UnwrapKey is not yet implemented")
 }
 
 func (o *cryptoOrchestrator) DeriveKey(ctx context.Context, _ crypto.DeriveKeyRequest) (*key.Key, error) {
 	return nil, errors.New(ctx,
-		"service.(cryptoOrchestrator).DeriveKey", errors.CodeNotImplemented,
+		"service.crypto.(cryptoOrchestrator).DeriveKey", errors.CodeNotImplemented,
 		"DeriveKey is not yet implemented")
 }
 
 func (o *cryptoOrchestrator) GenerateMAC(ctx context.Context, _ crypto.MacRequest) (crypto.MacResult, error) {
 	return crypto.MacResult{}, errors.New(ctx,
-		"service.(cryptoOrchestrator).GenerateMAC", errors.CodeNotImplemented,
+		"service.crypto.(cryptoOrchestrator).GenerateMAC", errors.CodeNotImplemented,
 		"GenerateMAC is not yet implemented")
 }
 
 func (o *cryptoOrchestrator) VerifyMAC(ctx context.Context, _ crypto.VerifyMacRequest) (crypto.VerifyMacResult, error) {
 	return crypto.VerifyMacResult{}, errors.New(ctx,
-		"service.(cryptoOrchestrator).VerifyMAC", errors.CodeNotImplemented,
+		"service.crypto.(cryptoOrchestrator).VerifyMAC", errors.CodeNotImplemented,
 		"VerifyMAC is not yet implemented")
 }
 
 func (o *cryptoOrchestrator) Digest(ctx context.Context, _ crypto.DigestRequest) (crypto.DigestResult, error) {
 	return crypto.DigestResult{}, errors.New(ctx,
-		"service.(cryptoOrchestrator).Digest", errors.CodeNotImplemented,
+		"service.crypto.(cryptoOrchestrator).Digest", errors.CodeNotImplemented,
 		"Digest is not yet implemented")
 }
 
 func (o *cryptoOrchestrator) GenerateRandom(ctx context.Context, _ int) ([]byte, error) {
 	return nil, errors.New(ctx,
-		"service.(cryptoOrchestrator).GenerateRandom", errors.CodeNotImplemented,
+		"service.crypto.(cryptoOrchestrator).GenerateRandom", errors.CodeNotImplemented,
 		"GenerateRandom is not yet implemented")
 }
 
