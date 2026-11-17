@@ -24,6 +24,7 @@ type CryptoOrchestrator interface {
 	VerifyMAC(ctx context.Context, req crypto.VerifyMacRequest) (crypto.VerifyMacResult, error)
 	Digest(ctx context.Context, req crypto.DigestRequest) (crypto.DigestResult, error)
 	GenerateRandom(ctx context.Context, length int) ([]byte, error)
+	VerifyWithPublicKey(ctx context.Context, req crypto.VerifyWithPublicKeyRequest) (crypto.VerifyWithPublicKeyResult, error)
 }
 
 // CryptoOrchestratorFactory builds the cryptographic-operation orchestrator for
