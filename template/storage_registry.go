@@ -13,25 +13,25 @@ import (
 
 const templateStoragePrefix = "template/"
 
-var _ Registry = (*VaultRegistry)(nil)
+var _ Registry = (*StorageRegistry)(nil)
 
-// VaultRegistry is a Vault-backed implementation of the Registry interface.
+// StorageRegistry is a Vault-backed implementation of the Registry interface.
 // Uses storage.Storage (typically storage.InmemStorage) with proto serialization,
 // following the same pattern as StorageRepository in key, policy, and provider.
-type VaultRegistry struct {
+type StorageRegistry struct {
 	mu        *sync.RWMutex
 	templates storage.Storage
 }
 
-// NewVaultRegistry creates a VaultRegistry backed by the given storage.
+// NewStorageRegistry creates a VaultRegistry backed by the given storage.
 // For in-memory usage, pass &storage.InmemStorage{}.
-func NewVaultRegistry(ctx context.Context, store storage.Storage, opt ...Option) (*VaultRegistry, error) {
+func NewStorageRegistry(ctx context.Context, store storage.Storage, opt ...Option) (*StorageRegistry, error) {
 	const op errors.Op = "template.NewVaultRegistry"
 	if store == nil {
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "nil storage")
 	}
 	opts := GetVaultOptions(opt...)
-	return &VaultRegistry{
+	return &StorageRegistry{
 		mu:        opts.Lock,
 		templates: storage.NewView(store, templateStoragePrefix),
 	}, nil
@@ -39,7 +39,7 @@ func NewVaultRegistry(ctx context.Context, store storage.Storage, opt ...Option)
 
 // Register stores a template. If a template with the same ID already exists,
 // it is overwritten (permits startup re-loading).
-func (r *VaultRegistry) Register(ctx context.Context, t *Template) error {
+func (r *StorageRegistry) Register(ctx context.Context, t *Template) error {
 	const op errors.Op = "template.(VaultRegistry).Register"
 	if t == nil {
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "template must not be nil")
@@ -63,7 +63,7 @@ func (r *VaultRegistry) Register(ctx context.Context, t *Template) error {
 
 // Get returns the template with the given ID, or a CodeTemplateNotFound error.
 // Returns an independent copy via proto round-trip (marshal on Register, unmarshal on Get).
-func (r *VaultRegistry) Get(ctx context.Context, templateID string) (*Template, error) {
+func (r *StorageRegistry) Get(ctx context.Context, templateID string) (*Template, error) {
 	const op errors.Op = "template.(VaultRegistry).Get"
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -84,7 +84,7 @@ func (r *VaultRegistry) Get(ctx context.Context, templateID string) (*Template, 
 }
 
 // List returns all registered templates.
-func (r *VaultRegistry) List(ctx context.Context) []*Template {
+func (r *StorageRegistry) List(ctx context.Context) []*Template {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -110,7 +110,7 @@ func (r *VaultRegistry) List(ctx context.Context) []*Template {
 // Get all the templates with the given IDs, applying the filter function to each.
 // Returns a slice of matching templates, or an error if any filterFn call fails.
 // If a template ID is not found, it is skipped (not an error).
-func (r *VaultRegistry) selectTemplatesWithIDs(ctx context.Context, ids []string, filterFn func(t *Template) (bool, error)) ([]*Template, error) {
+func (r *StorageRegistry) selectTemplatesWithIDs(ctx context.Context, ids []string, filterFn func(t *Template) (bool, error)) ([]*Template, error) {
 	const op = "template.(VaultRegistry).getAllTemplatesWithIDs"
 	candidates := []*Template{}
 	for _, id := range ids {
@@ -152,7 +152,7 @@ func (r *VaultRegistry) selectTemplatesWithIDs(ctx context.Context, ids []string
 // calling r.Get()/r.List(), because those methods also acquire r.mu.RLock()
 // and Go's sync.RWMutex is NOT reentrant.
 // TODO: Optimize with caching instead of full storage scan with serialization and deserialization
-func (r *VaultRegistry) Select(ctx context.Context, scopeSpec *core.ScopeSpecification, cs CandidateSet) (*Template, error) {
+func (r *StorageRegistry) Select(ctx context.Context, scopeSpec *core.ScopeSpecification, cs CandidateSet) (*Template, error) {
 	const op errors.Op = "template.(VaultRegistry).Select"
 	r.mu.RLock()
 	defer r.mu.RUnlock()

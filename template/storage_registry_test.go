@@ -76,9 +76,9 @@ func mldsaTemplate() *template.Template {
 
 var registryFn = func() template.Registry {
 	store := &storage.InmemStorage{}
-	r, err := template.NewVaultRegistry(context.Background(), store)
+	r, err := template.NewStorageRegistry(context.Background(), store)
 	if err != nil {
-		panic("failed to create template VaultRegistry: " + err.Error())
+		panic("failed to create template InmemStorageRegistry: " + err.Error())
 	}
 	return r
 }
@@ -87,21 +87,21 @@ var registryFn = func() template.Registry {
 // Register Tests
 // ============================================================================
 
-func TestVaultRegistry_Register_success(t *testing.T) {
+func TestInmemStorageRegistry_Register_success(t *testing.T) {
 	r := registryFn()
 	if err := r.Register(context.Background(), ecdsaTemplate()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
 }
 
-func TestVaultRegistry_Register_nil_returnsError(t *testing.T) {
+func TestInmemStorageRegistry_Register_nil_returnsError(t *testing.T) {
 	r := registryFn()
 	if err := r.Register(context.Background(), nil); err == nil {
 		t.Fatal("expected error for nil template")
 	}
 }
 
-func TestVaultRegistry_Register_emptyID_returnsError(t *testing.T) {
+func TestInmemStorageRegistry_Register_emptyID_returnsError(t *testing.T) {
 	r := registryFn()
 	tmpl := template.NewTemplate(&api.TemplateInfo{TemplateId: ""})
 	if err := r.Register(context.Background(), tmpl); err == nil {
@@ -109,7 +109,7 @@ func TestVaultRegistry_Register_emptyID_returnsError(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Register_duplicate_overwrite(t *testing.T) {
+func TestInmemStorageRegistry_Register_duplicate_overwrite(t *testing.T) {
 	r := registryFn()
 	_ = r.Register(context.Background(), ecdsaTemplate())
 	updated := template.NewTemplate(&api.TemplateInfo{
@@ -147,7 +147,7 @@ func TestVaultRegistry_Register_duplicate_overwrite(t *testing.T) {
 // Get Tests
 // ============================================================================
 
-func TestVaultRegistry_Get_success(t *testing.T) {
+func TestInmemStorageRegistry_Get_success(t *testing.T) {
 	r := registryFn()
 	_ = r.Register(context.Background(), ecdsaTemplate())
 	got, err := r.Get(context.Background(), "ecdsa-p256-sha256")
@@ -162,7 +162,7 @@ func TestVaultRegistry_Get_success(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Get_notFound(t *testing.T) {
+func TestInmemStorageRegistry_Get_notFound(t *testing.T) {
 	r := registryFn()
 	_, err := r.Get(context.Background(), "no-such-template")
 	if err == nil {
@@ -173,7 +173,7 @@ func TestVaultRegistry_Get_notFound(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Get_returnsClone(t *testing.T) {
+func TestInmemStorageRegistry_Get_returnsClone(t *testing.T) {
 	r := registryFn()
 	_ = r.Register(context.Background(), ecdsaTemplate())
 	got, _ := r.Get(context.Background(), "ecdsa-p256-sha256")
@@ -189,7 +189,7 @@ func TestVaultRegistry_Get_returnsClone(t *testing.T) {
 // List Tests
 // ============================================================================
 
-func TestVaultRegistry_List_all(t *testing.T) {
+func TestInmemStorageRegistry_List_all(t *testing.T) {
 	r := registryFn()
 	_ = r.Register(context.Background(), ecdsaTemplate())
 	_ = r.Register(context.Background(), mldsaTemplate())
@@ -199,7 +199,7 @@ func TestVaultRegistry_List_all(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_List_empty(t *testing.T) {
+func TestInmemStorageRegistry_List_empty(t *testing.T) {
 	r := registryFn()
 	list := r.List(context.Background())
 	if list == nil {
@@ -228,7 +228,7 @@ func registryWithBothTemplates(t *testing.T) template.Registry {
 // signatureScope matches any signature template regardless of scope variant.
 var signatureScope = &core.ScopeSpecification{Scope: core.ScopeSignatureStandard}
 
-func TestVaultRegistry_Select_byScope_noSecurityFilter(t *testing.T) {
+func TestInmemStorageRegistry_Select_byScope_noSecurityFilter(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	// No security filter and all templates eligible — both match scope.
 	// Should return one of the two (deterministic).
@@ -242,7 +242,7 @@ func TestVaultRegistry_Select_byScope_noSecurityFilter(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_requireQuantumSafe(t *testing.T) {
+func TestInmemStorageRegistry_Select_requireQuantumSafe(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	ctx := context.Background()
 	got, err := r.Select(ctx, &core.ScopeSpecification{
@@ -259,7 +259,7 @@ func TestVaultRegistry_Select_requireQuantumSafe(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_requireFIPSApproved(t *testing.T) {
+func TestInmemStorageRegistry_Select_requireFIPSApproved(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	ctx := context.Background()
 	got, err := r.Select(ctx, &core.ScopeSpecification{
@@ -276,7 +276,7 @@ func TestVaultRegistry_Select_requireFIPSApproved(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_allowedTemplates_restrictsCandidates(t *testing.T) {
+func TestInmemStorageRegistry_Select_allowedTemplates_restrictsCandidates(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	ctx := context.Background()
 	// Only ecdsa is allowed by policy
@@ -289,7 +289,7 @@ func TestVaultRegistry_Select_allowedTemplates_restrictsCandidates(t *testing.T)
 	}
 }
 
-func TestVaultRegistry_Select_allowedTemplates_emptyCandidates(t *testing.T) {
+func TestInmemStorageRegistry_Select_allowedTemplates_emptyCandidates(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	// Policy only allows a template that isn't registered
 	ctx := context.Background()
@@ -302,7 +302,7 @@ func TestVaultRegistry_Select_allowedTemplates_emptyCandidates(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_securityFilter_noMatch(t *testing.T) {
+func TestInmemStorageRegistry_Select_securityFilter_noMatch(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	ctx := context.Background()
 	_, err := r.Select(ctx, &core.ScopeSpecification{
@@ -320,7 +320,7 @@ func TestVaultRegistry_Select_securityFilter_noMatch(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_emptyRegistry(t *testing.T) {
+func TestInmemStorageRegistry_Select_emptyRegistry(t *testing.T) {
 	r := registryFn()
 	ctx := context.Background()
 	_, err := r.Select(ctx, signatureScope, template.AllTemplates())
@@ -332,7 +332,7 @@ func TestVaultRegistry_Select_emptyRegistry(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_explicitTemplateID_bypasses(t *testing.T) {
+func TestInmemStorageRegistry_Select_explicitTemplateID_bypasses(t *testing.T) {
 	// When AllowedTemplates has exactly one entry and scope is nil, return it directly.
 	r := registryWithBothTemplates(t)
 	ctx := context.Background()
@@ -345,7 +345,7 @@ func TestVaultRegistry_Select_explicitTemplateID_bypasses(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_scopeVariantMismatch(t *testing.T) {
+func TestInmemStorageRegistry_Select_scopeVariantMismatch(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	ctx := context.Background()
 	// Templates have signature/standard; ask for prehashed — should find no match.
@@ -360,7 +360,7 @@ func TestVaultRegistry_Select_scopeVariantMismatch(t *testing.T) {
 	}
 }
 
-func TestVaultRegistry_Select_primitiveMismatch(t *testing.T) {
+func TestInmemStorageRegistry_Select_primitiveMismatch(t *testing.T) {
 	r := registryWithBothTemplates(t)
 	ctx := context.Background()
 	// Templates are signature-scoped; ask for AEAD.

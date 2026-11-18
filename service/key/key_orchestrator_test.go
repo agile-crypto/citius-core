@@ -34,7 +34,7 @@ func allDeps(t *testing.T) (key.Repository, template.Registry, provider.Registry
 	if err != nil {
 		t.Fatalf("NewStorageRepository: %v", err)
 	}
-	reg, err := template.NewVaultRegistry(ctx, store)
+	reg, err := template.NewStorageRegistry(ctx, store)
 	if err != nil {
 		t.Fatalf("NewVaultRegistry: %v", err)
 	}

@@ -33,7 +33,7 @@ func setupCryptoOrchestratorFull(t *testing.T) (cryptosvc.CryptoOrchestrator, ke
 		t.Fatalf("NewStorageRepository: %v", err)
 	}
 
-	reg, err := template.NewVaultRegistry(ctx, store)
+	reg, err := template.NewStorageRegistry(ctx, store)
 	if err != nil {
 		t.Fatalf("NewVaultRegistry: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestNewCryptoOrchestrator_nilKeyReader_returnsError(t *testing.T) {
 	ctx := context.Background()
 	store := &storage.InmemStorage{}
 
-	reg, _ := template.NewVaultRegistry(ctx, store)
+	reg, _ := template.NewStorageRegistry(ctx, store)
 	provReg := provider.NewRegistry()
 	policyRepo, _ := policy.NewStorageRepository(ctx, store)
 	eval := policy.NewSimpleRulesEvaluator()
@@ -113,7 +113,7 @@ func TestNewCryptoOrchestrator_nilPolicyEngine_returnsError(t *testing.T) {
 	store := &storage.InmemStorage{}
 
 	repo, _ := key.NewStorageRepository(ctx, store)
-	reg, _ := template.NewVaultRegistry(ctx, store)
+	reg, _ := template.NewStorageRegistry(ctx, store)
 	provReg := provider.NewRegistry()
 
 	_, err := cryptosvc.NewCryptoOrchestrator(repo, nil, provReg, reg)
@@ -127,7 +127,7 @@ func TestNewCryptoOrchestrator_nilProviderRegistry_returnsError(t *testing.T) {
 	store := &storage.InmemStorage{}
 
 	repo, _ := key.NewStorageRepository(ctx, store)
-	reg, _ := template.NewVaultRegistry(ctx, store)
+	reg, _ := template.NewStorageRegistry(ctx, store)
 	policyRepo, _ := policy.NewStorageRepository(ctx, store)
 	eval := policy.NewSimpleRulesEvaluator()
 	pol, _ := policy.NewEnforcer(policyRepo, eval)

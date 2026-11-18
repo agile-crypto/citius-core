@@ -71,7 +71,7 @@ func setupWithCapturingSigner(t *testing.T) (cryptosvc.CryptoOrchestrator, keysv
 	if err != nil {
 		t.Fatalf("NewStorageRepository: %v", err)
 	}
-	reg, err := template.NewVaultRegistry(ctx, store)
+	reg, err := template.NewStorageRegistry(ctx, store)
 	if err != nil {
 		t.Fatalf("NewVaultRegistry: %v", err)
 	}

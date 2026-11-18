@@ -143,7 +143,7 @@ func TestCreateKey_providerNotFound_returnsError(t *testing.T) {
 	store := &storage.InmemStorage{}
 
 	repo, _ := key.NewStorageRepository(ctx, store)
-	reg, _ := template.NewVaultRegistry(ctx, store)
+	reg, _ := template.NewStorageRegistry(ctx, store)
 	_ = template.LoadStandardCatalog(ctx, catalogPath(), reg)
 	provReg := provider.NewRegistry() // empty — no providers
 	policyRepo, _ := policy.NewStorageRepository(ctx, store)
@@ -212,7 +212,7 @@ func TestCreateKey_withoutScope_returnsError(t *testing.T) {
 	store := &storage.InmemStorage{}
 
 	repo, _ := key.NewStorageRepository(ctx, store)
-	reg, _ := template.NewVaultRegistry(ctx, store)
+	reg, _ := template.NewStorageRegistry(ctx, store)
 	_ = template.LoadStandardCatalog(ctx, catalogPath(), reg)
 	provReg := provider.NewRegistry() // empty — no providers
 	policyRepo, _ := policy.NewStorageRepository(ctx, store)
