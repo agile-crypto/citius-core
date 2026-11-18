@@ -1,0 +1,5262 @@
+{
+  "version": "0.2.1",
+  "description": "CaaS Standard Algorithm Catalog - Merged from category files",
+  "lastUpdated": "2026-09-23T00:00:00Z",
+  "templates": {
+    "hybrid-x25519-mlkem768-concat": {
+      "templateId": "hybrid-x25519-mlkem768-concat",
+      "displayName": "X25519+ML-KEM-768",
+      "description": "Hybrid KEM: X25519 (128-bit classical) + ML-KEM-768 (Level 3 PQ), concatenation combiner.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kem": {
+              "scope": "KEM_SCOPE_HYBRID",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCAPSULATE",
+            "CRYPTO_OPERATION_DECAPSULATE"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "owCca": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "keyAgreement": {
+              "scope": "KEY_AGREEMENT_SCOPE_HYBRID",
+              "security": {
+                "securityStrengthBits": 192,
+                "quantumSafe": true,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3"
+              },
+              "forwardSecrecy": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_KEY_AGREEMENT"
+          ],
+          "securityGuarantees": {
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.6.1.4.1.22554.5.6.1",
+        "primitive": "CRYPTO_PRIMITIVE_COMBINER",
+        "hybrid": {
+          "combinerStrategy": "COMBINER_CONCATENATION",
+          "components": [
+            {
+              "algorithm": {
+                "oid": "1.3.101.110",
+                "primitive": "CRYPTO_PRIMITIVE_KEY_AGREE",
+                "x25519": {}
+              },
+              "label": "classical",
+              "order": 1
+            },
+            {
+              "algorithm": {
+                "oid": "2.16.840.1.101.3.4.4.2",
+                "primitive": "CRYPTO_PRIMITIVE_KEM",
+                "mlKem": {
+                  "parameterSet": "ML_KEM_768"
+                }
+              },
+              "label": "pqc",
+              "order": 2
+            }
+          ],
+          "totalKeySizeBits": 800
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "draft-ietf-tls-hybrid-design",
+        "draft-ounsworth-pq-composite-kem"
+      ],
+      "cyclonedx": {
+        "name": "X25519+ML-KEM-768",
+        "primitive": "combiner",
+        "parameterSetIdentifier": "X25519-MLKEM768",
+        "cryptoFunctions": [
+          "decapsulate",
+          "encapsulate",
+          "keyderive"
+        ],
+        "oid": "1.3.6.1.4.1.22554.5.6.1"
+      }
+    },
+    "hybrid-x448-mlkem1024-concat": {
+      "templateId": "hybrid-x448-mlkem1024-concat",
+      "displayName": "X448+ML-KEM-1024",
+      "description": "Hybrid KEM: X448 (224-bit classical) + ML-KEM-1024 (Level 5 PQ), concatenation combiner.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kem": {
+              "scope": "KEM_SCOPE_HYBRID",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCAPSULATE",
+            "CRYPTO_OPERATION_DECAPSULATE"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "owCca": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "keyAgreement": {
+              "scope": "KEY_AGREEMENT_SCOPE_HYBRID",
+              "security": {
+                "securityStrengthBits": 256,
+                "quantumSafe": true,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5"
+              },
+              "forwardSecrecy": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_KEY_AGREEMENT"
+          ],
+          "securityGuarantees": {
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.6.1.4.1.22554.5.6.5",
+        "primitive": "CRYPTO_PRIMITIVE_COMBINER",
+        "hybrid": {
+          "combinerStrategy": "COMBINER_CONCATENATION",
+          "components": [
+            {
+              "algorithm": {
+                "oid": "1.3.101.111",
+                "primitive": "CRYPTO_PRIMITIVE_KEY_AGREE",
+                "x448": {}
+              },
+              "label": "classical",
+              "order": 1
+            },
+            {
+              "algorithm": {
+                "oid": "2.16.840.1.101.3.4.4.3",
+                "primitive": "CRYPTO_PRIMITIVE_KEM",
+                "mlKem": {
+                  "parameterSet": "ML_KEM_1024"
+                }
+              },
+              "label": "pqc",
+              "order": 2
+            }
+          ],
+          "totalKeySizeBits": 1568
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "draft-ietf-tls-hybrid-design",
+        "draft-ounsworth-pq-composite-kem"
+      ],
+      "cyclonedx": {
+        "name": "X448+ML-KEM-1024",
+        "primitive": "combiner",
+        "parameterSetIdentifier": "X448-MLKEM1024",
+        "cryptoFunctions": [
+          "decapsulate",
+          "encapsulate",
+          "keyderive"
+        ],
+        "oid": "1.3.6.1.4.1.22554.5.6.5"
+      }
+    },
+    "hybrid-ecdsa-p256-mldsa65-concat": {
+      "templateId": "hybrid-ecdsa-p256-mldsa65-concat",
+      "displayName": "ECDSA-P256+ML-DSA-65",
+      "description": "Hybrid signature: ECDSA P-256 (128-bit) + ML-DSA-65 (Level 3), concatenation combiner.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true
+              },
+              "nonMalleable": false,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.6.1.4.1.22554.5.6.2",
+        "primitive": "CRYPTO_PRIMITIVE_COMBINER",
+        "hybrid": {
+          "combinerStrategy": "COMBINER_CONCATENATION",
+          "components": [
+            {
+              "algorithm": {
+                "oid": "1.2.840.10045.4.3.2",
+                "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+                "ecdsa": {
+                  "curve": "ELLIPTIC_CURVE_P256",
+                  "hash": "HASH_ALGORITHM_SHA256",
+                  "signatureFormat": "SIGNATURE_FORMAT_DER"
+                }
+              },
+              "label": "classical",
+              "order": 1
+            },
+            {
+              "algorithm": {
+                "oid": "2.16.840.1.101.3.4.3.18",
+                "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+                "mlDsa": {
+                  "parameterSet": "ML_DSA_65"
+                }
+              },
+              "label": "pqc",
+              "order": 2
+            }
+          ],
+          "totalKeySizeBits": 256
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "draft-ounsworth-pq-composite-sigs"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-P256+ML-DSA-65",
+        "primitive": "combiner",
+        "parameterSetIdentifier": "ECDSA-P256-MLDSA65",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "oid": "1.3.6.1.4.1.22554.5.6.2"
+      }
+    },
+    "hybrid-ed25519-mldsa65-concat": {
+      "templateId": "hybrid-ed25519-mldsa65-concat",
+      "displayName": "Ed25519+ML-DSA-65",
+      "description": "Hybrid signature: Ed25519 (128-bit) + ML-DSA-65 (Level 3), concatenation combiner.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.6.1.4.1.22554.5.6.3",
+        "primitive": "CRYPTO_PRIMITIVE_COMBINER",
+        "hybrid": {
+          "combinerStrategy": "COMBINER_CONCATENATION",
+          "components": [
+            {
+              "algorithm": {
+                "oid": "1.3.101.112",
+                "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+                "ed25519": {
+                  "variant": "ED25519_VARIANT_PURE"
+                }
+              },
+              "label": "classical",
+              "order": 1
+            },
+            {
+              "algorithm": {
+                "oid": "2.16.840.1.101.3.4.3.18",
+                "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+                "mlDsa": {
+                  "parameterSet": "ML_DSA_65"
+                }
+              },
+              "label": "pqc",
+              "order": 2
+            }
+          ],
+          "totalKeySizeBits": 256
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "draft-ounsworth-pq-composite-sigs"
+      ],
+      "cyclonedx": {
+        "name": "Ed25519+ML-DSA-65",
+        "primitive": "combiner",
+        "parameterSetIdentifier": "ED25519-MLDSA65",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "oid": "1.3.6.1.4.1.22554.5.6.3"
+      }
+    },
+    "hybrid-rsa3072-mldsa65-concat": {
+      "templateId": "hybrid-rsa3072-mldsa65-concat",
+      "displayName": "RSA-3072+ML-DSA-65",
+      "description": "Hybrid signature: RSA-3072 (128-bit) + ML-DSA-65 (Level 3), concatenation combiner.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.6.1.4.1.22554.5.6.4",
+        "primitive": "CRYPTO_PRIMITIVE_COMBINER",
+        "hybrid": {
+          "combinerStrategy": "COMBINER_CONCATENATION",
+          "components": [
+            {
+              "algorithm": {
+                "oid": "1.2.840.113549.1.1.10",
+                "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+                "rsaPss": {
+                  "keySizeBits": 3072,
+                  "hash": "HASH_ALGORITHM_SHA256",
+                  "mgf": "MGF_MGF1",
+                  "mgfHash": "HASH_ALGORITHM_SHA256",
+                  "saltLengthMode": "SALT_LENGTH_MODE_HASH_LENGTH"
+                }
+              },
+              "label": "classical",
+              "order": 1
+            },
+            {
+              "algorithm": {
+                "oid": "2.16.840.1.101.3.4.3.18",
+                "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+                "mlDsa": {
+                  "parameterSet": "ML_DSA_65"
+                }
+              },
+              "label": "pqc",
+              "order": 2
+            }
+          ],
+          "totalKeySizeBits": 3072
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "draft-ounsworth-pq-composite-sigs"
+      ],
+      "cyclonedx": {
+        "name": "RSA-3072+ML-DSA-65",
+        "primitive": "combiner",
+        "parameterSetIdentifier": "RSA3072-MLDSA65",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "oid": "1.3.6.1.4.1.22554.5.6.4"
+      }
+    },
+    "hkdf-sha256": {
+      "templateId": "hkdf-sha256",
+      "displayName": "HKDF-SHA-256",
+      "description": "HKDF using SHA-256, 32-byte (256-bit) output. Recommended for key expansion.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kdf": {
+              "scope": "KDF_SCOPE_EXTRACT_EXPAND",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "memoryHard": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DERIVE_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_KDF",
+        "hkdf": {
+          "hash": "HASH_ALGORITHM_SHA256",
+          "extract": true,
+          "expand": true,
+          "outputLength": 32
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 5869",
+        "NIST SP 800-56C"
+      ],
+      "cyclonedx": {
+        "name": "HKDF-SHA-256",
+        "primitive": "kdf",
+        "algorithmFamily": "HKDF",
+        "parameterSetIdentifier": "SHA-256",
+        "cryptoFunctions": [
+          "keyderive"
+        ]
+      }
+    },
+    "hkdf-sha384": {
+      "templateId": "hkdf-sha384",
+      "displayName": "HKDF-SHA-384",
+      "description": "HKDF using SHA-384, 48-byte (384-bit) output. Higher security level.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kdf": {
+              "scope": "KDF_SCOPE_EXTRACT_EXPAND",
+              "security": {
+                "securityStrengthBits": 384,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "memoryHard": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DERIVE_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_KDF",
+        "hkdf": {
+          "hash": "HASH_ALGORITHM_SHA384",
+          "extract": true,
+          "expand": true,
+          "outputLength": 48
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 5869",
+        "NIST SP 800-56C"
+      ],
+      "cyclonedx": {
+        "name": "HKDF-SHA-384",
+        "primitive": "kdf",
+        "algorithmFamily": "HKDF",
+        "parameterSetIdentifier": "SHA-384",
+        "cryptoFunctions": [
+          "keyderive"
+        ]
+      }
+    },
+    "hkdf-sha512": {
+      "templateId": "hkdf-sha512",
+      "displayName": "HKDF-SHA-512",
+      "description": "HKDF using SHA-512, 64-byte (512-bit) output. Maximum security level.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kdf": {
+              "scope": "KDF_SCOPE_EXTRACT_EXPAND",
+              "security": {
+                "securityStrengthBits": 512,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "memoryHard": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DERIVE_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_KDF",
+        "hkdf": {
+          "hash": "HASH_ALGORITHM_SHA512",
+          "extract": true,
+          "expand": true,
+          "outputLength": 64
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 5869",
+        "NIST SP 800-56C"
+      ],
+      "cyclonedx": {
+        "name": "HKDF-SHA-512",
+        "primitive": "kdf",
+        "algorithmFamily": "HKDF",
+        "parameterSetIdentifier": "SHA-512",
+        "cryptoFunctions": [
+          "keyderive"
+        ]
+      }
+    },
+    "pbkdf2-sha256-600000-32": {
+      "templateId": "pbkdf2-sha256-600000-32",
+      "displayName": "PBKDF2-SHA256-600K",
+      "description": "PBKDF2 using SHA-256, 600,000 iterations, 32-byte output. OWASP 2023 recommended.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kdf": {
+              "scope": "KDF_SCOPE_PASSWORD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "memoryHard": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DERIVE_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.5.12",
+        "primitive": "CRYPTO_PRIMITIVE_KDF",
+        "pbkdf2": {
+          "hash": "HASH_ALGORITHM_SHA256",
+          "iterations": 600000,
+          "saltSizeBytes": 16,
+          "outputLength": 32
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 8018",
+        "NIST SP 800-132"
+      ],
+      "cyclonedx": {
+        "name": "PBKDF2-SHA256-600K",
+        "primitive": "kdf",
+        "algorithmFamily": "PBKDF2",
+        "parameterSetIdentifier": "SHA-256-600000-32",
+        "cryptoFunctions": [
+          "keyderive"
+        ],
+        "oid": "1.2.840.113549.1.5.12"
+      }
+    },
+    "pbkdf2-sha512-210000-64": {
+      "templateId": "pbkdf2-sha512-210000-64",
+      "displayName": "PBKDF2-SHA512-210K",
+      "description": "PBKDF2 using SHA-512, 210,000 iterations, 64-byte output. OWASP 2023 recommended.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kdf": {
+              "scope": "KDF_SCOPE_PASSWORD",
+              "security": {
+                "securityStrengthBits": 512,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "memoryHard": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DERIVE_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.5.12",
+        "primitive": "CRYPTO_PRIMITIVE_KDF",
+        "pbkdf2": {
+          "hash": "HASH_ALGORITHM_SHA512",
+          "iterations": 210000,
+          "saltSizeBytes": 16,
+          "outputLength": 64
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 8018",
+        "NIST SP 800-132"
+      ],
+      "cyclonedx": {
+        "name": "PBKDF2-SHA512-210K",
+        "primitive": "kdf",
+        "algorithmFamily": "PBKDF2",
+        "parameterSetIdentifier": "SHA-512-210000-64",
+        "cryptoFunctions": [
+          "keyderive"
+        ],
+        "oid": "1.2.840.113549.1.5.12"
+      }
+    },
+    "argon2id-65536-3-4": {
+      "templateId": "argon2id-65536-3-4",
+      "displayName": "Argon2id-64M-3-4",
+      "description": "Argon2id with 64 MiB memory, 3 iterations, 4 parallelism. OWASP recommended.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kdf": {
+              "scope": "KDF_SCOPE_PASSWORD",
+              "security": {
+                "securityStrengthBits": 256
+              },
+              "memoryHard": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DERIVE_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_KDF",
+        "argon2": {
+          "variant": "ARGON2_VARIANT_ID",
+          "version": 19,
+          "memoryKib": 65536,
+          "iterations": 3,
+          "parallelism": 4,
+          "saltSizeBytes": 16,
+          "outputLength": 32
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 9106"
+      ],
+      "cyclonedx": {
+        "name": "Argon2id-64M-3-4",
+        "primitive": "kdf",
+        "parameterSetIdentifier": "id-65536-3-4",
+        "cryptoFunctions": [
+          "keyderive"
+        ]
+      }
+    },
+    "argon2i-65536-4-4": {
+      "templateId": "argon2i-65536-4-4",
+      "displayName": "Argon2i-64M-4-4",
+      "description": "Argon2i (side-channel resistant) with 64 MiB memory, 4 iterations, 4 parallelism.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kdf": {
+              "scope": "KDF_SCOPE_PASSWORD",
+              "security": {
+                "securityStrengthBits": 256
+              },
+              "memoryHard": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DERIVE_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_KDF",
+        "argon2": {
+          "variant": "ARGON2_VARIANT_I",
+          "version": 19,
+          "memoryKib": 65536,
+          "iterations": 4,
+          "parallelism": 4,
+          "saltSizeBytes": 16,
+          "outputLength": 32
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 9106"
+      ],
+      "cyclonedx": {
+        "name": "Argon2i-64M-4-4",
+        "primitive": "kdf",
+        "parameterSetIdentifier": "i-65536-4-4",
+        "cryptoFunctions": [
+          "keyderive"
+        ]
+      }
+    },
+    "ml-kem-512": {
+      "templateId": "ml-kem-512",
+      "displayName": "ML-KEM-512",
+      "description": "Module-Lattice KEM, NIST Level 1 (128-bit). FIPS 203.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kem": {
+              "scope": "KEM_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCAPSULATE",
+            "CRYPTO_OPERATION_DECAPSULATE"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "owCca": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.4.1",
+        "primitive": "CRYPTO_PRIMITIVE_KEM",
+        "mlKem": {
+          "parameterSet": "ML_KEM_512"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 203"
+      ],
+      "cyclonedx": {
+        "name": "ML-KEM-512",
+        "primitive": "kem",
+        "algorithmFamily": "ML-KEM",
+        "parameterSetIdentifier": "512",
+        "cryptoFunctions": [
+          "decapsulate",
+          "encapsulate"
+        ],
+        "classicalSecurityLevel": 128,
+        "nistQuantumSecurityLevel": 1,
+        "oid": "2.16.840.1.101.3.4.4.1"
+      },
+      "keyMaterialFamily": "ML-KEM"
+    },
+    "ml-kem-768": {
+      "templateId": "ml-kem-768",
+      "displayName": "ML-KEM-768",
+      "description": "Module-Lattice KEM, NIST Level 3 (192-bit). FIPS 203. Recommended.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kem": {
+              "scope": "KEM_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCAPSULATE",
+            "CRYPTO_OPERATION_DECAPSULATE"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "owCca": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.4.2",
+        "primitive": "CRYPTO_PRIMITIVE_KEM",
+        "mlKem": {
+          "parameterSet": "ML_KEM_768"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 203"
+      ],
+      "cyclonedx": {
+        "name": "ML-KEM-768",
+        "primitive": "kem",
+        "algorithmFamily": "ML-KEM",
+        "parameterSetIdentifier": "768",
+        "cryptoFunctions": [
+          "decapsulate",
+          "encapsulate"
+        ],
+        "classicalSecurityLevel": 192,
+        "nistQuantumSecurityLevel": 3,
+        "oid": "2.16.840.1.101.3.4.4.2"
+      },
+      "keyMaterialFamily": "ML-KEM"
+    },
+    "ml-kem-1024": {
+      "templateId": "ml-kem-1024",
+      "displayName": "ML-KEM-1024",
+      "description": "Module-Lattice KEM, NIST Level 5 (256-bit). FIPS 203. Highest security.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "kem": {
+              "scope": "KEM_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCAPSULATE",
+            "CRYPTO_OPERATION_DECAPSULATE"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "owCca": true
+            },
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.4.3",
+        "primitive": "CRYPTO_PRIMITIVE_KEM",
+        "mlKem": {
+          "parameterSet": "ML_KEM_1024"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 203"
+      ],
+      "cyclonedx": {
+        "name": "ML-KEM-1024",
+        "primitive": "kem",
+        "algorithmFamily": "ML-KEM",
+        "parameterSetIdentifier": "1024",
+        "cryptoFunctions": [
+          "decapsulate",
+          "encapsulate"
+        ],
+        "classicalSecurityLevel": 256,
+        "nistQuantumSecurityLevel": 5,
+        "oid": "2.16.840.1.101.3.4.4.3"
+      },
+      "keyMaterialFamily": "ML-KEM"
+    },
+    "x25519": {
+      "templateId": "x25519",
+      "displayName": "X25519",
+      "description": "Curve25519 ECDH key agreement. Fast, constant-time. RFC 7748. Curve approved in NIST SP 800-186; the key-agreement scheme itself is not yet FIPS-approved (pending SP 800-56A incorporation).",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyAgreement": {
+              "scope": "KEY_AGREEMENT_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128
+              },
+              "forwardSecrecy": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_KEY_AGREEMENT"
+          ],
+          "securityGuarantees": {
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.101.110",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_AGREE",
+        "x25519": {}
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 7748"
+      ],
+      "cyclonedx": {
+        "name": "X25519",
+        "primitive": "key-agree",
+        "algorithmFamily": "ECDH",
+        "ellipticCurve": "other/Curve25519",
+        "cryptoFunctions": [
+          "keyderive"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "1.3.101.110"
+      },
+      "keyMaterialFamily": "X25519"
+    },
+    "x448": {
+      "templateId": "x448",
+      "displayName": "X448",
+      "description": "Curve448 ECDH key agreement. Higher security than X25519. RFC 7748. Curve approved in NIST SP 800-186; the key-agreement scheme itself is not yet FIPS-approved (pending SP 800-56A incorporation).",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyAgreement": {
+              "scope": "KEY_AGREEMENT_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 224
+              },
+              "forwardSecrecy": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_KEY_AGREEMENT"
+          ],
+          "securityGuarantees": {
+            "practical": {
+              "confidentiality": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.101.111",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_AGREE",
+        "x448": {}
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 7748"
+      ],
+      "cyclonedx": {
+        "name": "X448",
+        "primitive": "key-agree",
+        "algorithmFamily": "ECDH",
+        "ellipticCurve": "other/Curve448",
+        "cryptoFunctions": [
+          "keyderive"
+        ],
+        "classicalSecurityLevel": 224,
+        "oid": "1.3.101.111"
+      },
+      "keyMaterialFamily": "X448"
+    },
+    "aes-128-kw": {
+      "templateId": "aes-128-kw",
+      "displayName": "AES-128-KW",
+      "description": "AES Key Wrap with 128-bit KEK. RFC 3394, NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyWrapping": {
+              "scope": "KEY_WRAPPING_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_WRAP_KEY",
+            "CRYPTO_OPERATION_UNWRAP_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "intCtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.5",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_WRAP",
+        "aesKeyWrap": {
+          "keySizeBits": 128,
+          "withPadding": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 3394",
+        "NIST SP 800-38F"
+      ],
+      "cyclonedx": {
+        "name": "AES-128-KW",
+        "primitive": "key-wrap",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "128",
+        "padding": "raw",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "2.16.840.1.101.3.4.1.5"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-192-kw": {
+      "templateId": "aes-192-kw",
+      "displayName": "AES-192-KW",
+      "description": "AES Key Wrap with 192-bit KEK. RFC 3394, NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyWrapping": {
+              "scope": "KEY_WRAPPING_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_WRAP_KEY",
+            "CRYPTO_OPERATION_UNWRAP_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "intCtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.25",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_WRAP",
+        "aesKeyWrap": {
+          "keySizeBits": 192,
+          "withPadding": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 3394",
+        "NIST SP 800-38F"
+      ],
+      "cyclonedx": {
+        "name": "AES-192-KW",
+        "primitive": "key-wrap",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "192",
+        "padding": "raw",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 192,
+        "oid": "2.16.840.1.101.3.4.1.25"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-256-kw": {
+      "templateId": "aes-256-kw",
+      "displayName": "AES-256-KW",
+      "description": "AES Key Wrap with 256-bit KEK. RFC 3394, NIST approved. Recommended.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyWrapping": {
+              "scope": "KEY_WRAPPING_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_WRAP_KEY",
+            "CRYPTO_OPERATION_UNWRAP_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "intCtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.45",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_WRAP",
+        "aesKeyWrap": {
+          "keySizeBits": 256,
+          "withPadding": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 3394",
+        "NIST SP 800-38F"
+      ],
+      "cyclonedx": {
+        "name": "AES-256-KW",
+        "primitive": "key-wrap",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "256",
+        "padding": "raw",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 256,
+        "oid": "2.16.840.1.101.3.4.1.45"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-128-kwp": {
+      "templateId": "aes-128-kwp",
+      "displayName": "AES-128-KWP",
+      "description": "AES Key Wrap with Padding, 128-bit KEK. RFC 5649, supports arbitrary data.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyWrapping": {
+              "scope": "KEY_WRAPPING_SCOPE_WITH_PADDING",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_WRAP_KEY",
+            "CRYPTO_OPERATION_UNWRAP_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "intCtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.8",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_WRAP",
+        "aesKeyWrap": {
+          "keySizeBits": 128,
+          "withPadding": true
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 5649",
+        "NIST SP 800-38F"
+      ],
+      "cyclonedx": {
+        "name": "AES-128-KWP",
+        "primitive": "key-wrap",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "128",
+        "padding": "other",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "2.16.840.1.101.3.4.1.8"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-192-kwp": {
+      "templateId": "aes-192-kwp",
+      "displayName": "AES-192-KWP",
+      "description": "AES Key Wrap with Padding, 192-bit KEK. RFC 5649, supports arbitrary data.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyWrapping": {
+              "scope": "KEY_WRAPPING_SCOPE_WITH_PADDING",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_WRAP_KEY",
+            "CRYPTO_OPERATION_UNWRAP_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "intCtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.28",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_WRAP",
+        "aesKeyWrap": {
+          "keySizeBits": 192,
+          "withPadding": true
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 5649",
+        "NIST SP 800-38F"
+      ],
+      "cyclonedx": {
+        "name": "AES-192-KWP",
+        "primitive": "key-wrap",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "192",
+        "padding": "other",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 192,
+        "oid": "2.16.840.1.101.3.4.1.28"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-256-kwp": {
+      "templateId": "aes-256-kwp",
+      "displayName": "AES-256-KWP",
+      "description": "AES Key Wrap with Padding, 256-bit KEK. RFC 5649, supports arbitrary data. Recommended.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "keyWrapping": {
+              "scope": "KEY_WRAPPING_SCOPE_WITH_PADDING",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_WRAP_KEY",
+            "CRYPTO_OPERATION_UNWRAP_KEY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "intCtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.48",
+        "primitive": "CRYPTO_PRIMITIVE_KEY_WRAP",
+        "aesKeyWrap": {
+          "keySizeBits": 256,
+          "withPadding": true
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 5649",
+        "NIST SP 800-38F"
+      ],
+      "cyclonedx": {
+        "name": "AES-256-KWP",
+        "primitive": "key-wrap",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "256",
+        "padding": "other",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 256,
+        "oid": "2.16.840.1.101.3.4.1.48"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "hmac-sha256-256": {
+      "templateId": "hmac-sha256-256",
+      "displayName": "HMAC-SHA256",
+      "description": "HMAC using SHA-256, 256-bit output. Most widely used.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "mac": {
+              "scope": "MAC_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_GENERATE_MAC",
+            "CRYPTO_OPERATION_VERIFY_MAC"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true,
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.2.9",
+        "primitive": "CRYPTO_PRIMITIVE_MAC",
+        "hmac": {
+          "hash": "HASH_ALGORITHM_SHA256"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 2104",
+        "FIPS 198-1"
+      ],
+      "cyclonedx": {
+        "name": "HMAC-SHA256",
+        "primitive": "mac",
+        "algorithmFamily": "HMAC",
+        "parameterSetIdentifier": "SHA-256",
+        "cryptoFunctions": [
+          "tag",
+          "verify"
+        ],
+        "oid": "1.2.840.113549.2.9"
+      }
+    },
+    "hmac-sha384-384": {
+      "templateId": "hmac-sha384-384",
+      "displayName": "HMAC-SHA384",
+      "description": "HMAC using SHA-384, 384-bit output.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "mac": {
+              "scope": "MAC_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 384,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_GENERATE_MAC",
+            "CRYPTO_OPERATION_VERIFY_MAC"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true,
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.2.10",
+        "primitive": "CRYPTO_PRIMITIVE_MAC",
+        "hmac": {
+          "hash": "HASH_ALGORITHM_SHA384"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 2104",
+        "FIPS 198-1"
+      ],
+      "cyclonedx": {
+        "name": "HMAC-SHA384",
+        "primitive": "mac",
+        "algorithmFamily": "HMAC",
+        "parameterSetIdentifier": "SHA-384",
+        "cryptoFunctions": [
+          "tag",
+          "verify"
+        ],
+        "oid": "1.2.840.113549.2.10"
+      }
+    },
+    "hmac-sha512-512": {
+      "templateId": "hmac-sha512-512",
+      "displayName": "HMAC-SHA512",
+      "description": "HMAC using SHA-512, 512-bit output. Maximum security.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "mac": {
+              "scope": "MAC_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 512,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_GENERATE_MAC",
+            "CRYPTO_OPERATION_VERIFY_MAC"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true,
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.2.11",
+        "primitive": "CRYPTO_PRIMITIVE_MAC",
+        "hmac": {
+          "hash": "HASH_ALGORITHM_SHA512"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 2104",
+        "FIPS 198-1"
+      ],
+      "cyclonedx": {
+        "name": "HMAC-SHA512",
+        "primitive": "mac",
+        "algorithmFamily": "HMAC",
+        "parameterSetIdentifier": "SHA-512",
+        "cryptoFunctions": [
+          "tag",
+          "verify"
+        ],
+        "oid": "1.2.840.113549.2.11"
+      }
+    },
+    "hmac-sha3-256-256": {
+      "templateId": "hmac-sha3-256-256",
+      "displayName": "HMAC-SHA3-256",
+      "description": "HMAC using SHA3-256, 256-bit output.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "mac": {
+              "scope": "MAC_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_GENERATE_MAC",
+            "CRYPTO_OPERATION_VERIFY_MAC"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true,
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.2.14",
+        "primitive": "CRYPTO_PRIMITIVE_MAC",
+        "hmac": {
+          "hash": "HASH_ALGORITHM_SHA3_256"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 198-1",
+        "FIPS 202"
+      ],
+      "cyclonedx": {
+        "name": "HMAC-SHA3-256",
+        "primitive": "mac",
+        "algorithmFamily": "HMAC",
+        "parameterSetIdentifier": "SHA3-256",
+        "cryptoFunctions": [
+          "tag",
+          "verify"
+        ],
+        "oid": "2.16.840.1.101.3.4.2.14"
+      }
+    },
+    "kmac128-256": {
+      "templateId": "kmac128-256",
+      "displayName": "KMAC128-256",
+      "description": "KECCAK MAC with 128-bit security, 256-bit output. Based on SHA-3.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "mac": {
+              "scope": "MAC_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_GENERATE_MAC",
+            "CRYPTO_OPERATION_VERIFY_MAC"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true,
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.2.19",
+        "primitive": "CRYPTO_PRIMITIVE_MAC",
+        "kmac": {
+          "variant": 128,
+          "outputBits": 256
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "NIST SP 800-185"
+      ],
+      "cyclonedx": {
+        "name": "KMAC128-256",
+        "primitive": "mac",
+        "algorithmFamily": "KMAC",
+        "parameterSetIdentifier": "128-256",
+        "cryptoFunctions": [
+          "tag",
+          "verify"
+        ],
+        "oid": "2.16.840.1.101.3.4.2.19"
+      }
+    },
+    "kmac256-512": {
+      "templateId": "kmac256-512",
+      "displayName": "KMAC256-512",
+      "description": "KECCAK MAC with 256-bit security, 512-bit output. Based on SHA-3.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "mac": {
+              "scope": "MAC_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_GENERATE_MAC",
+            "CRYPTO_OPERATION_VERIFY_MAC"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "prf": true,
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.2.20",
+        "primitive": "CRYPTO_PRIMITIVE_MAC",
+        "kmac": {
+          "variant": 256,
+          "outputBits": 512
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "NIST SP 800-185"
+      ],
+      "cyclonedx": {
+        "name": "KMAC256-512",
+        "primitive": "mac",
+        "algorithmFamily": "KMAC",
+        "parameterSetIdentifier": "256-512",
+        "cryptoFunctions": [
+          "tag",
+          "verify"
+        ],
+        "oid": "2.16.840.1.101.3.4.2.20"
+      }
+    },
+    "ml-dsa-44": {
+      "templateId": "ml-dsa-44",
+      "displayName": "ML-DSA-44",
+      "description": "Module-Lattice Digital Signature, NIST Level 2 (128-bit). FIPS 204. Supports optional context string.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_2",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_2",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.3.17",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "mlDsa": {
+          "parameterSet": "ML_DSA_44",
+          "deterministic": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 204"
+      ],
+      "cyclonedx": {
+        "name": "ML-DSA-44",
+        "primitive": "signature",
+        "algorithmFamily": "ML-DSA",
+        "parameterSetIdentifier": "44",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "nistQuantumSecurityLevel": 2,
+        "oid": "2.16.840.1.101.3.4.3.17"
+      },
+      "keyMaterialFamily": "ML-DSA"
+    },
+    "ml-dsa-65": {
+      "templateId": "ml-dsa-65",
+      "displayName": "ML-DSA-65",
+      "description": "Module-Lattice Digital Signature, NIST Level 3 (192-bit). FIPS 204. Recommended. Supports optional context string.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.3.18",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "mlDsa": {
+          "parameterSet": "ML_DSA_65",
+          "deterministic": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 204"
+      ],
+      "cyclonedx": {
+        "name": "ML-DSA-65",
+        "primitive": "signature",
+        "algorithmFamily": "ML-DSA",
+        "parameterSetIdentifier": "65",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 192,
+        "nistQuantumSecurityLevel": 3,
+        "oid": "2.16.840.1.101.3.4.3.18"
+      },
+      "keyMaterialFamily": "ML-DSA"
+    },
+    "ml-dsa-87": {
+      "templateId": "ml-dsa-87",
+      "displayName": "ML-DSA-87",
+      "description": "Module-Lattice Digital Signature, NIST Level 5 (256-bit). FIPS 204. Highest security. Supports optional context string.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.3.19",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "mlDsa": {
+          "parameterSet": "ML_DSA_87",
+          "deterministic": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 204"
+      ],
+      "cyclonedx": {
+        "name": "ML-DSA-87",
+        "primitive": "signature",
+        "algorithmFamily": "ML-DSA",
+        "parameterSetIdentifier": "87",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 256,
+        "nistQuantumSecurityLevel": 5,
+        "oid": "2.16.840.1.101.3.4.3.19"
+      },
+      "keyMaterialFamily": "ML-DSA"
+    },
+    "slh-dsa-sha2-128s": {
+      "templateId": "slh-dsa-sha2-128s",
+      "displayName": "SLH-DSA-SHA2-128s",
+      "description": "Stateless Hash-based DSA, SHA2, 128-bit security, small signatures. FIPS 205. Supports optional context string.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.3.20",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "slhDsa": {
+          "hashType": "SLH_DSA_SHA2",
+          "parameterSet": "SLH_DSA_128S"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 205"
+      ],
+      "cyclonedx": {
+        "name": "SLH-DSA-SHA2-128s",
+        "primitive": "signature",
+        "algorithmFamily": "SLH-DSA",
+        "parameterSetIdentifier": "SHA2-128S",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "nistQuantumSecurityLevel": 1,
+        "oid": "2.16.840.1.101.3.4.3.20"
+      },
+      "keyMaterialFamily": "SLH-DSA"
+    },
+    "slh-dsa-sha2-128f": {
+      "templateId": "slh-dsa-sha2-128f",
+      "displayName": "SLH-DSA-SHA2-128f",
+      "description": "Stateless Hash-based DSA, SHA2, 128-bit security, fast signing. FIPS 205. Supports optional context string.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.3.21",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "slhDsa": {
+          "hashType": "SLH_DSA_SHA2",
+          "parameterSet": "SLH_DSA_128F"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 205"
+      ],
+      "cyclonedx": {
+        "name": "SLH-DSA-SHA2-128f",
+        "primitive": "signature",
+        "algorithmFamily": "SLH-DSA",
+        "parameterSetIdentifier": "SHA2-128F",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "nistQuantumSecurityLevel": 1,
+        "oid": "2.16.840.1.101.3.4.3.21"
+      },
+      "keyMaterialFamily": "SLH-DSA"
+    },
+    "slh-dsa-shake-256s": {
+      "templateId": "slh-dsa-shake-256s",
+      "displayName": "SLH-DSA-SHAKE-256s",
+      "description": "Stateless Hash-based DSA, SHAKE, 256-bit security, small signatures. FIPS 205. Supports optional context string.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.3.30",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "slhDsa": {
+          "hashType": "SLH_DSA_SHAKE",
+          "parameterSet": "SLH_DSA_256S"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 205"
+      ],
+      "cyclonedx": {
+        "name": "SLH-DSA-SHAKE-256s",
+        "primitive": "signature",
+        "algorithmFamily": "SLH-DSA",
+        "parameterSetIdentifier": "SHAKE-256S",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 256,
+        "nistQuantumSecurityLevel": 5,
+        "oid": "2.16.840.1.101.3.4.3.30"
+      },
+      "keyMaterialFamily": "SLH-DSA"
+    },
+    "hash-ml-dsa-44": {
+      "templateId": "hash-ml-dsa-44",
+      "displayName": "HashML-DSA-44",
+      "description": "HashML-DSA-44 (FIPS 204): ML-DSA-44 over a caller-provided digest. Use with DigestSign API. Supports optional context string. OID omitted: NIST Hash* OIDs are digest-specific.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_2",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_2",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "mlDsa": {
+          "parameterSet": "ML_DSA_44",
+          "deterministic": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 204"
+      ],
+      "cyclonedx": {
+        "name": "HashML-DSA-44",
+        "primitive": "signature",
+        "algorithmFamily": "ML-DSA",
+        "parameterSetIdentifier": "44",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "nistQuantumSecurityLevel": 2
+      },
+      "keyMaterialFamily": "ML-DSA"
+    },
+    "hash-ml-dsa-65": {
+      "templateId": "hash-ml-dsa-65",
+      "displayName": "HashML-DSA-65",
+      "description": "HashML-DSA-65 (FIPS 204): ML-DSA-65 over a caller-provided digest. Recommended PQC prehashed signature. Supports optional context string. OID omitted: NIST Hash* OIDs are digest-specific.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_3",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "mlDsa": {
+          "parameterSet": "ML_DSA_65",
+          "deterministic": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 204"
+      ],
+      "cyclonedx": {
+        "name": "HashML-DSA-65",
+        "primitive": "signature",
+        "algorithmFamily": "ML-DSA",
+        "parameterSetIdentifier": "65",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 192,
+        "nistQuantumSecurityLevel": 3
+      },
+      "keyMaterialFamily": "ML-DSA"
+    },
+    "hash-ml-dsa-87": {
+      "templateId": "hash-ml-dsa-87",
+      "displayName": "HashML-DSA-87",
+      "description": "HashML-DSA-87 (FIPS 204): ML-DSA-87 over a caller-provided digest. Highest security. Supports optional context string. OID omitted: NIST Hash* OIDs are digest-specific.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "mlDsa": {
+          "parameterSet": "ML_DSA_87",
+          "deterministic": false
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 204"
+      ],
+      "cyclonedx": {
+        "name": "HashML-DSA-87",
+        "primitive": "signature",
+        "algorithmFamily": "ML-DSA",
+        "parameterSetIdentifier": "87",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 256,
+        "nistQuantumSecurityLevel": 5
+      },
+      "keyMaterialFamily": "ML-DSA"
+    },
+    "hash-slh-dsa-sha2-128s": {
+      "templateId": "hash-slh-dsa-sha2-128s",
+      "displayName": "HashSLH-DSA-SHA2-128s",
+      "description": "HashSLH-DSA-SHA2-128s (FIPS 205): SLH-DSA over a caller-provided digest. Small signatures. Supports optional context string. OID omitted: NIST Hash* OIDs are digest-specific.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "slhDsa": {
+          "hashType": "SLH_DSA_SHA2",
+          "parameterSet": "SLH_DSA_128S"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 205"
+      ],
+      "cyclonedx": {
+        "name": "HashSLH-DSA-SHA2-128s",
+        "primitive": "signature",
+        "algorithmFamily": "SLH-DSA",
+        "parameterSetIdentifier": "SHA2-128S",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "nistQuantumSecurityLevel": 1
+      },
+      "keyMaterialFamily": "SLH-DSA"
+    },
+    "hash-slh-dsa-sha2-128f": {
+      "templateId": "hash-slh-dsa-sha2-128f",
+      "displayName": "HashSLH-DSA-SHA2-128f",
+      "description": "HashSLH-DSA-SHA2-128f (FIPS 205): SLH-DSA over a caller-provided digest. Fast signing. Supports optional context string. OID omitted: NIST Hash* OIDs are digest-specific.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_1",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "slhDsa": {
+          "hashType": "SLH_DSA_SHA2",
+          "parameterSet": "SLH_DSA_128F"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 205"
+      ],
+      "cyclonedx": {
+        "name": "HashSLH-DSA-SHA2-128f",
+        "primitive": "signature",
+        "algorithmFamily": "SLH-DSA",
+        "parameterSetIdentifier": "SHA2-128F",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "nistQuantumSecurityLevel": 1
+      },
+      "keyMaterialFamily": "SLH-DSA"
+    },
+    "hash-slh-dsa-shake-256s": {
+      "templateId": "hash-slh-dsa-shake-256s",
+      "displayName": "HashSLH-DSA-SHAKE-256s",
+      "description": "HashSLH-DSA-SHAKE-256s (FIPS 205): SLH-DSA over a caller-provided digest. Highest security. Supports optional context string. OID omitted: NIST Hash* OIDs are digest-specific.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistSecurityLevel": "NIST_SECURITY_LEVEL_5",
+                "quantumSafe": true,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "slhDsa": {
+          "hashType": "SLH_DSA_SHAKE",
+          "parameterSet": "SLH_DSA_256S"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 205"
+      ],
+      "cyclonedx": {
+        "name": "HashSLH-DSA-SHAKE-256s",
+        "primitive": "signature",
+        "algorithmFamily": "SLH-DSA",
+        "parameterSetIdentifier": "SHAKE-256S",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 256,
+        "nistQuantumSecurityLevel": 5
+      },
+      "keyMaterialFamily": "SLH-DSA"
+    },
+    "ecdsa-p256-sha256-der": {
+      "templateId": "ecdsa-p256-sha256-der",
+      "displayName": "ECDSA-P256-SHA256",
+      "description": "ECDSA using NIST P-256 curve with SHA-256, DER-encoded signatures. NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.10045.4.3.2",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_P256",
+          "hash": "HASH_ALGORITHM_SHA256",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 186-5",
+        "ANSI X9.62"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-P256-SHA256",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "nist/P-256",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "1.2.840.10045.4.3.2"
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "ecdsa-p384-sha384-der": {
+      "templateId": "ecdsa-p384-sha384-der",
+      "displayName": "ECDSA-P384-SHA384",
+      "description": "ECDSA using NIST P-384 curve with SHA-384, DER-encoded signatures. NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.10045.4.3.3",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_P384",
+          "hash": "HASH_ALGORITHM_SHA384",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 186-5",
+        "ANSI X9.62"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-P384-SHA384",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "nist/P-384",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 192,
+        "oid": "1.2.840.10045.4.3.3"
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "ecdsa-p521-sha512-der": {
+      "templateId": "ecdsa-p521-sha512-der",
+      "displayName": "ECDSA-P521-SHA512",
+      "description": "ECDSA using NIST P-521 curve with SHA-512, DER-encoded signatures. NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.10045.4.3.4",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_P521",
+          "hash": "HASH_ALGORITHM_SHA512",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 186-5",
+        "ANSI X9.62"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-P521-SHA512",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "nist/P-521",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 256,
+        "oid": "1.2.840.10045.4.3.4"
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "ecdsa-secp256k1-sha256-der": {
+      "templateId": "ecdsa-secp256k1-sha256-der",
+      "displayName": "ECDSA-secp256k1-SHA256",
+      "description": "ECDSA using secp256k1 curve with SHA-256. Used in Bitcoin/Ethereum.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128
+              },
+              "nonMalleable": false,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.10045.4.3.2",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_SECP256K1",
+          "hash": "HASH_ALGORITHM_SHA256",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "SEC 2"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-secp256k1-SHA256",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "secg/secp256k1",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "1.2.840.10045.4.3.2"
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "ed25519": {
+      "templateId": "ed25519",
+      "displayName": "Ed25519",
+      "description": "Edwards-curve DSA using Curve25519, pure variant. High performance, deterministic.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.101.112",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ed25519": {
+          "variant": "ED25519_VARIANT_PURE"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 8032",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "Ed25519",
+        "primitive": "signature",
+        "algorithmFamily": "EdDSA",
+        "ellipticCurve": "other/Ed25519",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "1.3.101.112"
+      },
+      "keyMaterialFamily": "Ed25519"
+    },
+    "ed25519ph": {
+      "templateId": "ed25519ph",
+      "displayName": "Ed25519ph",
+      "description": "Ed25519 prehashed variant. Allows signing large messages with external hashing. No distinct OID: RFC 8410 removed the draft ph OIDs.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": true,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ed25519": {
+          "variant": "ED25519_VARIANT_PH"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 8032",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "Ed25519ph",
+        "primitive": "signature",
+        "algorithmFamily": "EdDSA",
+        "ellipticCurve": "other/Ed25519",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128
+      },
+      "keyMaterialFamily": "Ed25519"
+    },
+    "ed25519ctx": {
+      "templateId": "ed25519ctx",
+      "displayName": "Ed25519ctx",
+      "description": "Ed25519 with context variant. Allows domain separation via context string. No distinct OID assigned by RFC 8410.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE"
+              },
+              "nonMalleable": true,
+              "deterministic": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ed25519": {
+          "variant": "ED25519_VARIANT_CTX"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 8032"
+      ],
+      "cyclonedx": {
+        "name": "Ed25519ctx",
+        "primitive": "signature",
+        "algorithmFamily": "EdDSA",
+        "ellipticCurve": "other/Ed25519",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128
+      },
+      "keyMaterialFamily": "Ed25519"
+    },
+    "ed448": {
+      "templateId": "ed448",
+      "displayName": "Ed448",
+      "description": "Edwards-curve DSA using Curve448, pure variant. Higher security than Ed25519. Supports optional context string.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 224,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        },
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_WITH_CONTEXT",
+              "security": {
+                "securityStrengthBits": 224,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.3.101.113",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ed448": {
+          "variant": "ED448_VARIANT_PURE"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 8032",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "Ed448",
+        "primitive": "signature",
+        "algorithmFamily": "EdDSA",
+        "ellipticCurve": "other/Ed448",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 224,
+        "oid": "1.3.101.113"
+      },
+      "keyMaterialFamily": "Ed448"
+    },
+    "rsa-pss-sha256-mgf1-32-2048": {
+      "templateId": "rsa-pss-sha256-mgf1-32-2048",
+      "displayName": "RSA-PSS-SHA-256-MGF1-32-2048",
+      "description": "RSA-PSS with 2048-bit key, SHA-256, 32-byte salt. NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 112,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.10",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPss": {
+          "keySizeBits": 2048,
+          "hash": "HASH_ALGORITHM_SHA256",
+          "mgf": "MGF_MGF1",
+          "mgfHash": "HASH_ALGORITHM_SHA256",
+          "saltLengthMode": "SALT_LENGTH_MODE_HASH_LENGTH"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "PKCS#1 v2.2",
+        "RFC 8017",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PSS-SHA-256-MGF1-32-2048",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PSS",
+        "parameterSetIdentifier": "2048",
+        "padding": "other",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 112,
+        "oid": "1.2.840.113549.1.1.10"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "rsa-pss-sha256-mgf1-32-3072": {
+      "templateId": "rsa-pss-sha256-mgf1-32-3072",
+      "displayName": "RSA-PSS-SHA-256-MGF1-32-3072",
+      "description": "RSA-PSS with 3072-bit key, SHA-256, 32-byte salt. Recommended minimum for long-term.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.10",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPss": {
+          "keySizeBits": 3072,
+          "hash": "HASH_ALGORITHM_SHA256",
+          "mgf": "MGF_MGF1",
+          "mgfHash": "HASH_ALGORITHM_SHA256",
+          "saltLengthMode": "SALT_LENGTH_MODE_HASH_LENGTH"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "PKCS#1 v2.2",
+        "RFC 8017",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PSS-SHA-256-MGF1-32-3072",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PSS",
+        "parameterSetIdentifier": "3072",
+        "padding": "other",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "1.2.840.113549.1.1.10"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "rsa-pss-sha384-mgf1-48-4096": {
+      "templateId": "rsa-pss-sha384-mgf1-48-4096",
+      "displayName": "RSA-PSS-SHA-384-MGF1-48-4096",
+      "description": "RSA-PSS with 4096-bit key, SHA-384, 48-byte salt. High security.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 152,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.10",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPss": {
+          "keySizeBits": 4096,
+          "hash": "HASH_ALGORITHM_SHA384",
+          "mgf": "MGF_MGF1",
+          "mgfHash": "HASH_ALGORITHM_SHA384",
+          "saltLengthMode": "SALT_LENGTH_MODE_HASH_LENGTH"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "PKCS#1 v2.2",
+        "RFC 8017",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PSS-SHA-384-MGF1-48-4096",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PSS",
+        "parameterSetIdentifier": "4096",
+        "padding": "other",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 152,
+        "oid": "1.2.840.113549.1.1.10"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "rsa-pkcs1v15-sha256-2048": {
+      "templateId": "rsa-pkcs1v15-sha256-2048",
+      "displayName": "RSA-PKCS1-1.5-SHA-256-2048",
+      "description": "RSA PKCS#1 v1.5 with 2048-bit key, SHA-256. Legacy, prefer RSA-PSS.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 112,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": true
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_SIGN",
+            "CRYPTO_OPERATION_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.11",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPkcs1v15": {
+          "keySizeBits": 2048,
+          "hash": "HASH_ALGORITHM_SHA256"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "deprecationNotice": "Prefer RSA-PSS for new applications",
+      "standards": [
+        "PKCS#1 v1.5",
+        "RFC 8017"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PKCS1-1.5-SHA-256-2048",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PKCS1",
+        "parameterSetIdentifier": "2048",
+        "padding": "pkcs1v15",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 112,
+        "oid": "1.2.840.113549.1.1.11"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "ecdsa-p256-prehashed-der": {
+      "templateId": "ecdsa-p256-prehashed-der",
+      "displayName": "ECDSA-P256-Prehashed",
+      "description": "ECDSA P-256 for pre-computed digests. Caller provides digest, service signs directly. Use with DigestSign API.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_P256",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 186-5",
+        "ANSI X9.62"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-P256-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "nist/P-256",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "ecdsa-p384-prehashed-der": {
+      "templateId": "ecdsa-p384-prehashed-der",
+      "displayName": "ECDSA-P384-Prehashed",
+      "description": "ECDSA P-384 for pre-computed digests. Caller provides digest, service signs directly. Use with DigestSign API.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_P384",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 186-5",
+        "ANSI X9.62"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-P384-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "nist/P-384",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 192
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "ecdsa-p521-prehashed-der": {
+      "templateId": "ecdsa-p521-prehashed-der",
+      "displayName": "ECDSA-P521-Prehashed",
+      "description": "ECDSA P-521 for pre-computed digests. Caller provides digest, service signs directly. Use with DigestSign API.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_P521",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "FIPS 186-5",
+        "ANSI X9.62"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-P521-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "nist/P-521",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 256
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "ecdsa-secp256k1-prehashed-der": {
+      "templateId": "ecdsa-secp256k1-prehashed-der",
+      "displayName": "ECDSA-secp256k1-Prehashed",
+      "description": "ECDSA secp256k1 for pre-computed digests. Used in Bitcoin/Ethereum with external hashing.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 128
+              },
+              "nonMalleable": false,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "ecdsa": {
+          "curve": "ELLIPTIC_CURVE_SECP256K1",
+          "signatureFormat": "SIGNATURE_FORMAT_DER"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "SEC 2"
+      ],
+      "cyclonedx": {
+        "name": "ECDSA-secp256k1-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "ECDSA",
+        "ellipticCurve": "secg/secp256k1",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128
+      },
+      "keyMaterialFamily": "ECDSA"
+    },
+    "rsa-pss-2048-prehashed": {
+      "templateId": "rsa-pss-2048-prehashed",
+      "displayName": "RSA-PSS-2048-Prehashed",
+      "description": "RSA-PSS 2048-bit for pre-computed digests. Caller provides digest and declares hash algorithm.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 112,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.10",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPss": {
+          "keySizeBits": 2048,
+          "mgf": "MGF_MGF1",
+          "saltLengthMode": "SALT_LENGTH_MODE_HASH_LENGTH"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "PKCS#1 v2.2",
+        "RFC 8017",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PSS-2048-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PSS",
+        "parameterSetIdentifier": "2048",
+        "padding": "other",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 112,
+        "oid": "1.2.840.113549.1.1.10"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "rsa-pss-3072-prehashed": {
+      "templateId": "rsa-pss-3072-prehashed",
+      "displayName": "RSA-PSS-3072-Prehashed",
+      "description": "RSA-PSS 3072-bit for pre-computed digests. Caller provides digest and declares hash algorithm.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.10",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPss": {
+          "keySizeBits": 3072,
+          "mgf": "MGF_MGF1",
+          "saltLengthMode": "SALT_LENGTH_MODE_HASH_LENGTH"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "PKCS#1 v2.2",
+        "RFC 8017",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PSS-3072-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PSS",
+        "parameterSetIdentifier": "3072",
+        "padding": "other",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "1.2.840.113549.1.1.10"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "rsa-pss-4096-prehashed": {
+      "templateId": "rsa-pss-4096-prehashed",
+      "displayName": "RSA-PSS-4096-Prehashed",
+      "description": "RSA-PSS 4096-bit for pre-computed digests. High security for external hashing workflows. 152-bit strength per SP 800-56B Appendix D estimate.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 152,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonMalleable": true,
+              "deterministic": false,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true,
+              "sufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.10",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPss": {
+          "keySizeBits": 4096,
+          "mgf": "MGF_MGF1",
+          "saltLengthMode": "SALT_LENGTH_MODE_HASH_LENGTH"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "PKCS#1 v2.2",
+        "RFC 8017",
+        "FIPS 186-5"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PSS-4096-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PSS",
+        "parameterSetIdentifier": "4096",
+        "padding": "other",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 152,
+        "oid": "1.2.840.113549.1.1.10"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "rsa-pkcs1v15-2048-prehashed": {
+      "templateId": "rsa-pkcs1v15-2048-prehashed",
+      "displayName": "RSA-PKCS1-1.5-2048-Prehashed",
+      "description": "RSA PKCS#1 v1.5 2048-bit for pre-computed digests. Legacy, prefer RSA-PSS-prehashed.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "signature": {
+              "scope": "SIGNATURE_SCOPE_PREHASHED",
+              "security": {
+                "securityStrengthBits": 112,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              },
+              "nonMalleable": false,
+              "deterministic": true,
+              "acceptedDigestHashes": [
+                "HASH_ALGORITHM_SHA256",
+                "HASH_ALGORITHM_SHA384",
+                "HASH_ALGORITHM_SHA512"
+              ]
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_DIGEST_SIGN",
+            "CRYPTO_OPERATION_DIGEST_VERIFY"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "eufCma": true
+            },
+            "practical": {
+              "integrity": true,
+              "authenticity": true,
+              "nonRepudiation": true
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "1.2.840.113549.1.1.1",
+        "primitive": "CRYPTO_PRIMITIVE_SIGNATURE",
+        "rsaPkcs1v15": {
+          "keySizeBits": 2048
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "deprecationNotice": "Prefer RSA-PSS-prehashed for new applications",
+      "standards": [
+        "PKCS#1 v1.5",
+        "RFC 8017"
+      ],
+      "cyclonedx": {
+        "name": "RSA-PKCS1-1.5-2048-Prehashed",
+        "primitive": "signature",
+        "algorithmFamily": "RSASSA-PKCS1",
+        "parameterSetIdentifier": "2048",
+        "padding": "pkcs1v15",
+        "cryptoFunctions": [
+          "sign",
+          "verify"
+        ],
+        "classicalSecurityLevel": 112,
+        "oid": "1.2.840.113549.1.1.1"
+      },
+      "keyMaterialFamily": "RSA"
+    },
+    "aes-128-gcm-128-96": {
+      "templateId": "aes-128-gcm-128-96",
+      "displayName": "AES-128-GCM-128-96",
+      "description": "AES with 128-bit key in Galois/Counter Mode, 96-bit IV, 128-bit tag. NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "aead": {
+              "scope": "AEAD_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonceMisuseResistant": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "intCtxt": true,
+              "intPtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true,
+              "authenticity": true
+            },
+            "bounds": {
+              "authenticationStrengthBits": 128,
+              "maxMessagesPerKey": 4294967296,
+              "maxPlaintextBytesPerKey": 68719476736,
+              "attackSuccessProbability": "2^-32"
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.6",
+        "primitive": "CRYPTO_PRIMITIVE_AE",
+        "aesGcm": {
+          "keySizeBits": 128,
+          "ivSizeBits": 96,
+          "tagSizeBits": 128
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "NIST SP 800-38D",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-128-GCM-128-96",
+        "primitive": "ae",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "128",
+        "mode": "gcm",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "2.16.840.1.101.3.4.1.6"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-192-gcm-128-96": {
+      "templateId": "aes-192-gcm-128-96",
+      "displayName": "AES-192-GCM-128-96",
+      "description": "AES with 192-bit key in Galois/Counter Mode, 96-bit IV, 128-bit tag. NIST approved.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "aead": {
+              "scope": "AEAD_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonceMisuseResistant": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "intCtxt": true,
+              "intPtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true,
+              "authenticity": true
+            },
+            "bounds": {
+              "authenticationStrengthBits": 128,
+              "maxMessagesPerKey": 4294967296,
+              "maxPlaintextBytesPerKey": 68719476736,
+              "attackSuccessProbability": "2^-32"
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.26",
+        "primitive": "CRYPTO_PRIMITIVE_AE",
+        "aesGcm": {
+          "keySizeBits": 192,
+          "ivSizeBits": 96,
+          "tagSizeBits": 128
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "NIST SP 800-38D",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-192-GCM-128-96",
+        "primitive": "ae",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "192",
+        "mode": "gcm",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 192,
+        "oid": "2.16.840.1.101.3.4.1.26"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-256-gcm-128-96": {
+      "templateId": "aes-256-gcm-128-96",
+      "displayName": "AES-256-GCM-128-96",
+      "description": "AES with 256-bit key in Galois/Counter Mode, 96-bit IV, 128-bit tag. NIST approved, recommended.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "aead": {
+              "scope": "AEAD_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_APPROVED",
+                "fipsApproved": true
+              },
+              "nonceMisuseResistant": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "intCtxt": true,
+              "intPtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true,
+              "authenticity": true
+            },
+            "bounds": {
+              "authenticationStrengthBits": 128,
+              "maxMessagesPerKey": 4294967296,
+              "maxPlaintextBytesPerKey": 68719476736,
+              "attackSuccessProbability": "2^-32"
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.46",
+        "primitive": "CRYPTO_PRIMITIVE_AE",
+        "aesGcm": {
+          "keySizeBits": 256,
+          "ivSizeBits": 96,
+          "tagSizeBits": 128
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "NIST SP 800-38D",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-256-GCM-128-96",
+        "primitive": "ae",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "256",
+        "mode": "gcm",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 256,
+        "oid": "2.16.840.1.101.3.4.1.46"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-128-cbc-pkcs7-128": {
+      "templateId": "aes-128-cbc-pkcs7-128",
+      "displayName": "AES-128-CBC-PKCS7",
+      "description": "AES with 128-bit key in CBC mode, 128-bit IV, PKCS7 padding. Legacy, prefer AEAD.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "symmetricCipher": {
+              "scope": "SYMMETRIC_CIPHER_SCOPE_BLOCK",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCpa": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": false,
+              "authenticity": false
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.2",
+        "primitive": "CRYPTO_PRIMITIVE_BLOCK_CIPHER",
+        "aesCbc": {
+          "keySizeBits": 128,
+          "ivSizeBits": 128,
+          "padding": "PADDING_SCHEME_PKCS7"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "deprecationNotice": "Prefer AES-GCM for authenticated encryption",
+      "standards": [
+        "NIST SP 800-38A",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-128-CBC-PKCS7",
+        "primitive": "block-cipher",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "128",
+        "mode": "cbc",
+        "padding": "pkcs7",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 128,
+        "oid": "2.16.840.1.101.3.4.1.2"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-192-cbc-pkcs7-128": {
+      "templateId": "aes-192-cbc-pkcs7-128",
+      "displayName": "AES-192-CBC-PKCS7",
+      "description": "AES with 192-bit key in CBC mode, 128-bit IV, PKCS7 padding. Legacy, prefer AEAD.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "symmetricCipher": {
+              "scope": "SYMMETRIC_CIPHER_SCOPE_BLOCK",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCpa": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": false,
+              "authenticity": false
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.22",
+        "primitive": "CRYPTO_PRIMITIVE_BLOCK_CIPHER",
+        "aesCbc": {
+          "keySizeBits": 192,
+          "ivSizeBits": 128,
+          "padding": "PADDING_SCHEME_PKCS7"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "deprecationNotice": "Prefer AES-GCM for authenticated encryption",
+      "standards": [
+        "NIST SP 800-38A",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-192-CBC-PKCS7",
+        "primitive": "block-cipher",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "192",
+        "mode": "cbc",
+        "padding": "pkcs7",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 192,
+        "oid": "2.16.840.1.101.3.4.1.22"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-256-cbc-pkcs7-128": {
+      "templateId": "aes-256-cbc-pkcs7-128",
+      "displayName": "AES-256-CBC-PKCS7",
+      "description": "AES with 256-bit key in CBC mode, 128-bit IV, PKCS7 padding. Legacy, prefer AEAD.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "symmetricCipher": {
+              "scope": "SYMMETRIC_CIPHER_SCOPE_BLOCK",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCpa": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": false,
+              "authenticity": false
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "oid": "2.16.840.1.101.3.4.1.42",
+        "primitive": "CRYPTO_PRIMITIVE_BLOCK_CIPHER",
+        "aesCbc": {
+          "keySizeBits": 256,
+          "ivSizeBits": 128,
+          "padding": "PADDING_SCHEME_PKCS7"
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "deprecationNotice": "Prefer AES-GCM for authenticated encryption",
+      "standards": [
+        "NIST SP 800-38A",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-256-CBC-PKCS7",
+        "primitive": "block-cipher",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "256",
+        "mode": "cbc",
+        "padding": "pkcs7",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 256,
+        "oid": "2.16.840.1.101.3.4.1.42"
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-128-ctr": {
+      "templateId": "aes-128-ctr",
+      "displayName": "AES-128-CTR",
+      "description": "AES with 128-bit key in Counter mode, 96-bit nonce, 32-bit counter. Stream cipher mode.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "symmetricCipher": {
+              "scope": "SYMMETRIC_CIPHER_SCOPE_STREAM",
+              "security": {
+                "securityStrengthBits": 128,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCpa": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": false,
+              "authenticity": false
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_STREAM_CIPHER",
+        "aesCtr": {
+          "keySizeBits": 128,
+          "nonceSizeBits": 96,
+          "counterBits": 32
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "standards": [
+        "NIST SP 800-38A",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-128-CTR",
+        "primitive": "stream-cipher",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "128",
+        "mode": "ctr",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 128
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-192-ctr": {
+      "templateId": "aes-192-ctr",
+      "displayName": "AES-192-CTR",
+      "description": "AES with 192-bit key in Counter mode, 96-bit nonce, 32-bit counter. Stream cipher mode.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "symmetricCipher": {
+              "scope": "SYMMETRIC_CIPHER_SCOPE_STREAM",
+              "security": {
+                "securityStrengthBits": 192,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCpa": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": false,
+              "authenticity": false
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_STREAM_CIPHER",
+        "aesCtr": {
+          "keySizeBits": 192,
+          "nonceSizeBits": 96,
+          "counterBits": 32
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "standards": [
+        "NIST SP 800-38A",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-192-CTR",
+        "primitive": "stream-cipher",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "192",
+        "mode": "ctr",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 192
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "aes-256-ctr": {
+      "templateId": "aes-256-ctr",
+      "displayName": "AES-256-CTR",
+      "description": "AES with 256-bit key in Counter mode, 96-bit nonce, 32-bit counter. Stream cipher mode.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "symmetricCipher": {
+              "scope": "SYMMETRIC_CIPHER_SCOPE_STREAM",
+              "security": {
+                "securityStrengthBits": 256,
+                "nistStatus": "NIST_STATUS_ACCEPTABLE",
+                "fipsApproved": true
+              }
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCpa": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": false,
+              "authenticity": false
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_STREAM_CIPHER",
+        "aesCtr": {
+          "keySizeBits": 256,
+          "nonceSizeBits": 96,
+          "counterBits": 32
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACCEPTABLE",
+      "standards": [
+        "NIST SP 800-38A",
+        "FIPS 197"
+      ],
+      "cyclonedx": {
+        "name": "AES-256-CTR",
+        "primitive": "stream-cipher",
+        "algorithmFamily": "AES",
+        "parameterSetIdentifier": "256",
+        "mode": "ctr",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 256
+      },
+      "keyMaterialFamily": "AES"
+    },
+    "chacha20-poly1305": {
+      "templateId": "chacha20-poly1305",
+      "displayName": "ChaCha20-Poly1305",
+      "description": "ChaCha20 (256-bit key) with Poly1305 MAC, 96-bit nonce, 128-bit tag. RFC 8439.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "aead": {
+              "scope": "AEAD_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256
+              },
+              "nonceMisuseResistant": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "intCtxt": true,
+              "intPtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true,
+              "authenticity": true
+            },
+            "bounds": {
+              "authenticationStrengthBits": 128,
+              "maxMessagesPerKey": 4294967296,
+              "attackSuccessProbability": "2^-32"
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_AE",
+        "chacha20Poly1305": {
+          "nonceSizeBits": 96,
+          "blockCounterBits": 32
+        },
+        "oid": "1.2.840.113549.1.9.16.3.18"
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "RFC 8439"
+      ],
+      "cyclonedx": {
+        "name": "ChaCha20-Poly1305",
+        "primitive": "ae",
+        "algorithmFamily": "ChaCha20",
+        "parameterSetIdentifier": "256",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 256,
+        "oid": "1.2.840.113549.1.9.16.3.18"
+      },
+      "keyMaterialFamily": "ChaCha20"
+    },
+    "xchacha20-poly1305": {
+      "templateId": "xchacha20-poly1305",
+      "displayName": "XChaCha20-Poly1305",
+      "description": "XChaCha20 (256-bit key) with Poly1305 MAC, 192-bit nonce, 128-bit tag. Extended nonce variant. Not standardized: defined only by an expired IETF draft.",
+      "scopedCapabilities": [
+        {
+          "scope": {
+            "aead": {
+              "scope": "AEAD_SCOPE_STANDARD",
+              "security": {
+                "securityStrengthBits": 256
+              },
+              "nonceMisuseResistant": false
+            }
+          },
+          "operations": [
+            "CRYPTO_OPERATION_ENCRYPT",
+            "CRYPTO_OPERATION_DECRYPT"
+          ],
+          "securityGuarantees": {
+            "formal": {
+              "indCca2": true,
+              "intCtxt": true,
+              "intPtxt": true
+            },
+            "practical": {
+              "confidentiality": true,
+              "integrity": true,
+              "authenticity": true
+            },
+            "bounds": {
+              "authenticationStrengthBits": 128,
+              "maxMessagesPerKey": "18446744073709551615",
+              "attackSuccessProbability": "2^-128"
+            }
+          }
+        }
+      ],
+      "algorithm": {
+        "primitive": "CRYPTO_PRIMITIVE_AE",
+        "chacha20Poly1305": {
+          "nonceSizeBits": 192,
+          "blockCounterBits": 32,
+          "extendedNonce": true
+        }
+      },
+      "status": "TEMPLATE_STATUS_ACTIVE",
+      "standards": [
+        "draft-irtf-cfrg-xchacha-03 (expired IETF draft; never standardized)"
+      ],
+      "cyclonedx": {
+        "name": "XChaCha20-Poly1305",
+        "primitive": "ae",
+        "algorithmFamily": "ChaCha20",
+        "parameterSetIdentifier": "256",
+        "cryptoFunctions": [
+          "decrypt",
+          "encrypt"
+        ],
+        "classicalSecurityLevel": 256
+      },
+      "keyMaterialFamily": "ChaCha20"
+    }
+  },
+  "families": [
+    {
+      "family": "AES",
+      "displayName": "Advanced Encryption Standard",
+      "description": "CycloneDX AES algorithm family represented by this catalog.",
+      "primitive": "other",
+      "standards": [
+        "FIPS 197",
+        "NIST SP 800-38A",
+        "NIST SP 800-38D",
+        "NIST SP 800-38F",
+        "RFC 3394",
+        "RFC 5649"
+      ],
+      "templateIds": [
+        "aes-128-kw",
+        "aes-192-kw",
+        "aes-256-kw",
+        "aes-128-kwp",
+        "aes-192-kwp",
+        "aes-256-kwp",
+        "aes-128-gcm-128-96",
+        "aes-192-gcm-128-96",
+        "aes-256-gcm-128-96",
+        "aes-128-cbc-pkcs7-128",
+        "aes-192-cbc-pkcs7-128",
+        "aes-256-cbc-pkcs7-128",
+        "aes-128-ctr",
+        "aes-192-ctr",
+        "aes-256-ctr"
+      ],
+      "defaultTemplateId": "aes-256-gcm-128-96",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 128
+    },
+    {
+      "family": "ChaCha20",
+      "displayName": "ChaCha20",
+      "description": "CycloneDX ChaCha20 algorithm family represented by this catalog.",
+      "primitive": "ae",
+      "standards": [
+        "RFC 8439",
+        "draft-irtf-cfrg-xchacha-03 (expired IETF draft; never standardized)"
+      ],
+      "templateIds": [
+        "chacha20-poly1305",
+        "xchacha20-poly1305"
+      ],
+      "defaultTemplateId": "chacha20-poly1305",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 256
+    },
+    {
+      "family": "ECDH",
+      "displayName": "Elliptic Curve Diffie-Hellman",
+      "description": "CycloneDX ECDH algorithm family represented by this catalog.",
+      "primitive": "key-agree",
+      "standards": [
+        "RFC 7748"
+      ],
+      "templateIds": [
+        "x25519",
+        "x448"
+      ],
+      "defaultTemplateId": "x25519",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 128
+    },
+    {
+      "family": "ECDSA",
+      "displayName": "Elliptic Curve Digital Signature Algorithm",
+      "description": "CycloneDX ECDSA algorithm family represented by this catalog.",
+      "primitive": "signature",
+      "standards": [
+        "ANSI X9.62",
+        "FIPS 186-5",
+        "SEC 2"
+      ],
+      "templateIds": [
+        "ecdsa-p256-sha256-der",
+        "ecdsa-p384-sha384-der",
+        "ecdsa-p521-sha512-der",
+        "ecdsa-secp256k1-sha256-der",
+        "ecdsa-p256-prehashed-der",
+        "ecdsa-p384-prehashed-der",
+        "ecdsa-p521-prehashed-der",
+        "ecdsa-secp256k1-prehashed-der"
+      ],
+      "defaultTemplateId": "ecdsa-p256-sha256-der",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 128
+    },
+    {
+      "family": "EdDSA",
+      "displayName": "Edwards-Curve Digital Signature Algorithm",
+      "description": "CycloneDX EdDSA algorithm family represented by this catalog.",
+      "primitive": "signature",
+      "standards": [
+        "FIPS 186-5",
+        "RFC 8032"
+      ],
+      "templateIds": [
+        "ed25519",
+        "ed25519ph",
+        "ed25519ctx",
+        "ed448"
+      ],
+      "defaultTemplateId": "ed25519",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 128
+    },
+    {
+      "family": "HKDF",
+      "displayName": "HMAC-based Extract-and-Expand Key Derivation Function",
+      "description": "CycloneDX HKDF algorithm family represented by this catalog.",
+      "primitive": "kdf",
+      "standards": [
+        "NIST SP 800-56C",
+        "RFC 5869"
+      ],
+      "templateIds": [
+        "hkdf-sha256",
+        "hkdf-sha384",
+        "hkdf-sha512"
+      ],
+      "defaultTemplateId": "hkdf-sha256",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 256
+    },
+    {
+      "family": "HMAC",
+      "displayName": "Hash-based Message Authentication Code",
+      "description": "CycloneDX HMAC algorithm family represented by this catalog.",
+      "primitive": "mac",
+      "standards": [
+        "FIPS 198-1",
+        "FIPS 202",
+        "RFC 2104"
+      ],
+      "templateIds": [
+        "hmac-sha256-256",
+        "hmac-sha384-384",
+        "hmac-sha512-512",
+        "hmac-sha3-256-256"
+      ],
+      "defaultTemplateId": "hmac-sha256-256",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 256
+    },
+    {
+      "family": "KMAC",
+      "displayName": "Keccak Message Authentication Code",
+      "description": "CycloneDX KMAC algorithm family represented by this catalog.",
+      "primitive": "mac",
+      "standards": [
+        "NIST SP 800-185"
+      ],
+      "templateIds": [
+        "kmac128-256",
+        "kmac256-512"
+      ],
+      "defaultTemplateId": "kmac128-256",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 128
+    },
+    {
+      "family": "ML-DSA",
+      "displayName": "Module-Lattice-Based Digital Signature Algorithm",
+      "description": "CycloneDX ML-DSA algorithm family represented by this catalog.",
+      "primitive": "signature",
+      "standards": [
+        "FIPS 204"
+      ],
+      "templateIds": [
+        "ml-dsa-44",
+        "ml-dsa-65",
+        "ml-dsa-87",
+        "hash-ml-dsa-44",
+        "hash-ml-dsa-65",
+        "hash-ml-dsa-87"
+      ],
+      "defaultTemplateId": "ml-dsa-65",
+      "hasPqcVariants": true,
+      "minSecurityLevel": 128
+    },
+    {
+      "family": "ML-KEM",
+      "displayName": "Module-Lattice-Based Key-Encapsulation Mechanism",
+      "description": "CycloneDX ML-KEM algorithm family represented by this catalog.",
+      "primitive": "kem",
+      "standards": [
+        "FIPS 203"
+      ],
+      "templateIds": [
+        "ml-kem-512",
+        "ml-kem-768",
+        "ml-kem-1024"
+      ],
+      "defaultTemplateId": "ml-kem-768",
+      "hasPqcVariants": true,
+      "minSecurityLevel": 128
+    },
+    {
+      "family": "PBKDF2",
+      "displayName": "Password-Based Key Derivation Function 2",
+      "description": "CycloneDX PBKDF2 algorithm family represented by this catalog.",
+      "primitive": "kdf",
+      "standards": [
+        "NIST SP 800-132",
+        "RFC 8018"
+      ],
+      "templateIds": [
+        "pbkdf2-sha256-600000-32",
+        "pbkdf2-sha512-210000-64"
+      ],
+      "defaultTemplateId": "pbkdf2-sha256-600000-32",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 256
+    },
+    {
+      "family": "RSASSA-PKCS1",
+      "displayName": "RSA Signature Scheme with PKCS #1 v1.5",
+      "description": "CycloneDX RSASSA-PKCS1 algorithm family represented by this catalog.",
+      "primitive": "signature",
+      "standards": [
+        "PKCS#1 v1.5",
+        "RFC 8017"
+      ],
+      "templateIds": [
+        "rsa-pkcs1v15-sha256-2048",
+        "rsa-pkcs1v15-2048-prehashed"
+      ],
+      "defaultTemplateId": "rsa-pkcs1v15-sha256-2048",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 112
+    },
+    {
+      "family": "RSASSA-PSS",
+      "displayName": "RSA Signature Scheme with Probabilistic Signature Scheme",
+      "description": "CycloneDX RSASSA-PSS algorithm family represented by this catalog.",
+      "primitive": "signature",
+      "standards": [
+        "FIPS 186-5",
+        "PKCS#1 v2.2",
+        "RFC 8017"
+      ],
+      "templateIds": [
+        "rsa-pss-sha256-mgf1-32-2048",
+        "rsa-pss-sha256-mgf1-32-3072",
+        "rsa-pss-sha384-mgf1-48-4096",
+        "rsa-pss-2048-prehashed",
+        "rsa-pss-3072-prehashed",
+        "rsa-pss-4096-prehashed"
+      ],
+      "defaultTemplateId": "rsa-pss-sha256-mgf1-32-3072",
+      "hasPqcVariants": false,
+      "minSecurityLevel": 112
+    },
+    {
+      "family": "SLH-DSA",
+      "displayName": "Stateless Hash-Based Digital Signature Algorithm",
+      "description": "CycloneDX SLH-DSA algorithm family represented by this catalog.",
+      "primitive": "signature",
+      "standards": [
+        "FIPS 205"
+      ],
+      "templateIds": [
+        "slh-dsa-sha2-128s",
+        "slh-dsa-sha2-128f",
+        "slh-dsa-shake-256s",
+        "hash-slh-dsa-sha2-128s",
+        "hash-slh-dsa-sha2-128f",
+        "hash-slh-dsa-shake-256s"
+      ],
+      "defaultTemplateId": "slh-dsa-sha2-128s",
+      "hasPqcVariants": true,
+      "minSecurityLevel": 128
+    }
+  ]
+}

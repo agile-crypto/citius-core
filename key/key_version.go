@@ -12,7 +12,7 @@ import (
 
 // Version is the domain representation of one version of a Key's material.
 // It belongs to the Key aggregate: key.Orchestrator creates and reads versions;
-// external callers access material only through KeyOrchestrator.GetKeyWithMaterial.
+// external callers access material only through service/key.Orchestrator.GetKeyWithMaterial.
 type Version struct {
 	*storepb.KeyVersion
 }

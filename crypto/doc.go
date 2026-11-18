@@ -12,7 +12,7 @@
 //   - MacRequest / MacResult / VerifyMacRequest / VerifyMacResult
 //   - DigestRequest / DigestResult
 //
-// These VOs cross the boundary between service.CryptoOrchestrator (which
+// These VOs cross the boundary between service/crypto.Orchestrator (which
 // accepts them) and provider.Backend (which works with provider-level VOs).
 //
 // Session (session.go) represents a multi-part streaming session (e.g.,

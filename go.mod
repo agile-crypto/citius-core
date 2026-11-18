@@ -7,8 +7,10 @@ require (
 	buf.build/go/protovalidate v1.4.0
 	github.com/agile-crypto/citius-api-go v0.3.0
 	github.com/agile-crypto/citius-provider-go v0.1.0
+	github.com/cloudflare/circl v1.6.5
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/stretchr/testify v1.12.1
+	golang.org/x/crypto v0.57.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 )

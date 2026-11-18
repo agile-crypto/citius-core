@@ -2,10 +2,12 @@ package policy_test
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/agile-crypto/citius-core/errors"
 	"github.com/agile-crypto/citius-core/policy"
+	"github.com/agile-crypto/citius-core/storage"
 )
 
 // fakeRepository is an in-memory policy.Repository for tests in this package.
@@ -58,6 +60,19 @@ func (r *fakeRepository) ListPolicies(ctx context.Context) ([]string, error) {
 	names := make([]string, 0, len(r.policies))
 	for name := range r.policies {
 		names = append(names, name)
+	}
+	return names, nil
+}
+
+func (r *fakeRepository) ListPoliciesWithPrefix(ctx context.Context, prefix string) ([]string, error) {
+	folder := storage.FolderPrefix(prefix)
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	names := make([]string, 0, len(r.policies))
+	for name := range r.policies {
+		if strings.HasPrefix(name, folder) {
+			names = append(names, name)
+		}
 	}
 	return names, nil
 }

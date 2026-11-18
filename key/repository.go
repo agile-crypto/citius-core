@@ -9,7 +9,7 @@ import (
 // so that callers enforce invariants by invoking aggregate methods rather
 // than inspecting flattened data.
 //
-// Any application service that only reads keys (e.g. CryptoOrchestrator)
+// Any application service that only reads keys (e.g. service/crypto.Orchestrator)
 // should depend on ReadOnlyRepository rather than the full Repository.
 type ReadOnlyRepository interface {
 	// GetKeyByID retrieves a key by public ID (metadata only, no material).
@@ -20,6 +20,12 @@ type ReadOnlyRepository interface {
 
 	// ListKeys returns all stored keys as full domain objects.
 	ListKeys(ctx context.Context) ([]*Key, error)
+
+	// ListKeysWithPrefix returns, as full domain objects, all stored keys located under the
+	// folder named by prefix, at any depth. The prefix must be a complete folder path
+	// ("test" or "test/namespace1"; a trailing separator is optional): partial folder names
+	// such as "tes" match nothing. An empty prefix returns all keys, like ListKeys.
+	ListKeysWithPrefix(ctx context.Context, prefix string) ([]*Key, error)
 
 	// GetVersion retrieves a specific version of a key by version number.
 	GetVersion(ctx context.Context, keyID string, versionNum uint32) (*Version, error)
