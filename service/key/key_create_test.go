@@ -151,7 +151,7 @@ func TestCreateKey_providerNotFound_returnsError(t *testing.T) {
 	pol, _ := policy.NewEnforcer(policyRepo, eval)
 	seedPermissivePolicy(t, ctx, pol)
 
-	orch, _ := keysvc.NewKeyOrchestrator(repo, reg, provReg, pol)
+	orch, _ := keysvc.NewOrchestrator(repo, reg, provReg, pol)
 
 	_, err := orch.CreateKey(ctx, core.KeyCreationSpec{
 		Name:               "no-provider",
@@ -220,7 +220,7 @@ func TestCreateKey_withoutScope_returnsError(t *testing.T) {
 	pol, _ := policy.NewEnforcer(policyRepo, eval)
 	seedPermissivePolicy(t, ctx, pol)
 
-	orch, _ := keysvc.NewKeyOrchestrator(repo, reg, provReg, pol)
+	orch, _ := keysvc.NewOrchestrator(repo, reg, provReg, pol)
 
 	_, err := orch.CreateKey(ctx, core.KeyCreationSpec{
 		Name:       "no-provider",

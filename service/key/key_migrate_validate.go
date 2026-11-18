@@ -140,7 +140,7 @@ func (v *MigrationValidation) ToProto() *messagespb.ValidateKeyOperationResponse
 // A strategy's refusal is reported as its reason; only a failure to read
 // the key, or an unexpected error, is returned as an error.
 func (r *keyOrchestrator) ValidateMigration(ctx context.Context, spec MigrateKeySpec) (*MigrationValidation, error) {
-	const op = "service.(keyOrchestrator).ValidateMigration"
+	const op = "service.key.(keyOrchestrator).ValidateMigration"
 	strategies := migrationStrategies
 	if spec.Strategy != messagespb.MigrationStrategy_MIGRATION_STRATEGY_UNSPECIFIED {
 		if !slices.Contains(migrationStrategies, spec.Strategy) {

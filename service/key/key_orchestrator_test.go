@@ -22,7 +22,7 @@ import (
 )
 
 // ============================================================================
-// keysvc.NewKeyOrchestrator Constructor Tests
+// keysvc.NewOrchestrator Constructor Tests
 // ============================================================================
 
 // allDeps creates a full set of valid dependencies for the constructor.
@@ -53,18 +53,18 @@ func allDeps(t *testing.T) (key.Repository, template.Registry, provider.Registry
 
 func TestNewKeyOrchestrator_allDependencies_succeeds(t *testing.T) {
 	repo, reg, prov, pol := allDeps(t)
-	orch, err := keysvc.NewKeyOrchestrator(repo, reg, prov, pol)
+	orch, err := keysvc.NewOrchestrator(repo, reg, prov, pol)
 	if err != nil {
-		t.Fatalf("keysvc.NewKeyOrchestrator: %v", err)
+		t.Fatalf("keysvc.NewOrchestrator: %v", err)
 	}
 	if orch == nil {
-		t.Fatal("keysvc.NewKeyOrchestrator returned nil")
+		t.Fatal("keysvc.NewOrchestrator returned nil")
 	}
 }
 
 func TestNewKeyOrchestrator_nilRepository_returnsError(t *testing.T) {
 	_, reg, prov, pol := allDeps(t)
-	_, err := keysvc.NewKeyOrchestrator(nil, reg, prov, pol)
+	_, err := keysvc.NewOrchestrator(nil, reg, prov, pol)
 	if err == nil {
 		t.Fatal("expected error for nil repository")
 	}
@@ -72,7 +72,7 @@ func TestNewKeyOrchestrator_nilRepository_returnsError(t *testing.T) {
 
 func TestNewKeyOrchestrator_nilTemplateRegistry_returnsError(t *testing.T) {
 	repo, _, prov, pol := allDeps(t)
-	_, err := keysvc.NewKeyOrchestrator(repo, nil, prov, pol)
+	_, err := keysvc.NewOrchestrator(repo, nil, prov, pol)
 	if err == nil {
 		t.Fatal("expected error for nil template registry")
 	}
@@ -80,7 +80,7 @@ func TestNewKeyOrchestrator_nilTemplateRegistry_returnsError(t *testing.T) {
 
 func TestNewKeyOrchestrator_nilProviderRegistry_returnsError(t *testing.T) {
 	repo, reg, _, pol := allDeps(t)
-	_, err := keysvc.NewKeyOrchestrator(repo, reg, nil, pol)
+	_, err := keysvc.NewOrchestrator(repo, reg, nil, pol)
 	if err == nil {
 		t.Fatal("expected error for nil provider registry")
 	}
@@ -88,7 +88,7 @@ func TestNewKeyOrchestrator_nilProviderRegistry_returnsError(t *testing.T) {
 
 func TestNewKeyOrchestrator_nilPolicyEngine_returnsError(t *testing.T) {
 	repo, reg, prov, _ := allDeps(t)
-	_, err := keysvc.NewKeyOrchestrator(repo, reg, prov, nil)
+	_, err := keysvc.NewOrchestrator(repo, reg, prov, nil)
 	if err == nil {
 		t.Fatal("expected error for nil policy engine")
 	}
@@ -96,10 +96,10 @@ func TestNewKeyOrchestrator_nilPolicyEngine_returnsError(t *testing.T) {
 
 func TestNewKeyOrchestrator_returnsInterface(t *testing.T) {
 	repo, reg, prov, pol := allDeps(t)
-	var orch keysvc.KeyOrchestrator
-	orch, err := keysvc.NewKeyOrchestrator(repo, reg, prov, pol)
+	var orch keysvc.Orchestrator
+	orch, err := keysvc.NewOrchestrator(repo, reg, prov, pol)
 	if err != nil {
-		t.Fatalf("keysvc.NewKeyOrchestrator: %v", err)
+		t.Fatalf("keysvc.NewOrchestrator: %v", err)
 	}
 	_ = orch // confirms the return type satisfies the interface
 }
@@ -256,7 +256,7 @@ func assertMatchTransformSpec(t *testing.T, expectedSpec keysvc.TransformKeySpec
 		require.Equal(t, oldVersion.KeyMaterial, v.KeyMaterial)
 	}
 }
-func assertVersionConsistent(t *testing.T, expectedVersion uint32, k *key.Key, v *key.Version, md *keysvc.KeyMetadata) {
+func assertVersionConsistent(t *testing.T, expectedVersion uint32, k *key.Key, v *key.Version, md *keysvc.Metadata) {
 	require.Equal(t, expectedVersion, k.CurrentVersion)
 	require.Equal(t, expectedVersion, md.Version)
 	require.Equal(t, expectedVersion, v.Version)
@@ -332,7 +332,7 @@ func seedPolicy(t *testing.T, ctx context.Context, engine policy.Engine, name st
 		_ = seedScopePolicy(t, ctx, engine, name, defaultRules)
 	}
 }
-func assertMetadataMatchKeyAndVersion(t *testing.T, ctx context.Context, metadata *keysvc.KeyMetadata, k *key.Key, v *key.Version) {
+func assertMetadataMatchKeyAndVersion(t *testing.T, ctx context.Context, metadata *keysvc.Metadata, k *key.Key, v *key.Version) {
 	specBytes, err := metadata.ScopeSpec.Serialize(ctx)
 	require.NoError(t, err)
 	require.Equal(t, v.GetScopeSpecification(), specBytes)

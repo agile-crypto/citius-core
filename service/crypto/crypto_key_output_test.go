@@ -62,7 +62,7 @@ var (
 // setupWithCapturingSigner mirrors setupCryptoOrchestratorFull but registers
 // a capturingSigner instead of a plain software.Provider, so the test can
 // inspect the provider-level requests the orchestrator builds.
-func setupWithCapturingSigner(t *testing.T) (cryptosvc.CryptoOrchestrator, keysvc.KeyOrchestrator, *capturingSigner) {
+func setupWithCapturingSigner(t *testing.T) (cryptosvc.Orchestrator, keysvc.Orchestrator, *capturingSigner) {
 	t.Helper()
 	ctx := context.Background()
 	store := &storage.InmemStorage{}
@@ -117,13 +117,13 @@ func setupWithCapturingSigner(t *testing.T) (cryptosvc.CryptoOrchestrator, keysv
 		t.Fatalf("seed policy: %v", err)
 	}
 
-	keyOrch, err := keysvc.NewKeyOrchestrator(repo, reg, provReg, pol)
+	keyOrch, err := keysvc.NewOrchestrator(repo, reg, provReg, pol)
 	if err != nil {
-		t.Fatalf("keysvc.NewKeyOrchestrator: %v", err)
+		t.Fatalf("keysvc.NewOrchestrator: %v", err)
 	}
-	ops, err := cryptosvc.NewCryptoOrchestrator(repo, pol, provReg, reg)
+	ops, err := cryptosvc.NewOrchestrator(repo, pol, provReg, reg)
 	if err != nil {
-		t.Fatalf("cryptosvc.NewCryptoOrchestrator: %v", err)
+		t.Fatalf("cryptosvc.NewOrchestrator: %v", err)
 	}
 
 	if _, err = keyOrch.CreateKey(ctx, core.KeyCreationSpec{

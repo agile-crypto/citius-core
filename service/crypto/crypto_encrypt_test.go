@@ -43,10 +43,10 @@ func seedEncryptPolicy(t *testing.T, ctx context.Context, pol policy.Engine) {
 	}
 }
 
-// setupCryptoWithKeyForEncrypt creates a wired cryptosvc.CryptoOrchestrator, seeds a
+// setupCryptoWithKeyForEncrypt creates a wired cryptosvc.Orchestrator, seeds a
 // policy that allows create_key + encrypt + decrypt for aes-256-gcm-128-96,
-// creates a key, and returns the cryptosvc.CryptoOrchestrator and the key's name.
-func setupCryptoWithKeyForEncrypt(t *testing.T) (cryptosvc.CryptoOrchestrator, string) {
+// creates a key, and returns the cryptosvc.Orchestrator and the key's name.
+func setupCryptoWithKeyForEncrypt(t *testing.T) (cryptosvc.Orchestrator, string) {
 	t.Helper()
 	ctx := context.Background()
 	ops, keyOrch, pol := setupCryptoOrchestratorFull(t)
@@ -68,7 +68,7 @@ func setupCryptoWithKeyForEncrypt(t *testing.T) (cryptosvc.CryptoOrchestrator, s
 // setupCryptoWithKeyForBlockCipherEncrypt mirrors setupCryptoWithKeyForEncrypt
 // for the non-AEAD cipher families (AES-CBC, AES-CTR), which use NoParams
 // instead of AeadParams and a block/stream scope instead of AEAD scope.
-func setupCryptoWithKeyForBlockCipherEncrypt(t *testing.T, templateID string, scope core.Scope) (cryptosvc.CryptoOrchestrator, string) {
+func setupCryptoWithKeyForBlockCipherEncrypt(t *testing.T, templateID string, scope core.Scope) (cryptosvc.Orchestrator, string) {
 	t.Helper()
 	ctx := context.Background()
 	ops, keyOrch, pol := setupCryptoOrchestratorFull(t)

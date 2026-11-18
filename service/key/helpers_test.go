@@ -64,7 +64,7 @@ func catalogPath() string {
 	return filepath.Join(filepath.Dir(currentFile), "..", "..", "data", "standard_algorithms.json")
 }
 
-// setupOrchestratorFull creates a fully wired keysvc.KeyOrchestrator backed by
+// setupOrchestratorFull creates a fully wired keysvc.Orchestrator backed by
 // in-memory storage, the software provider, and the standard algorithm catalog.
 // It returns the orchestrator, the underlying key.Repository (for lifecycle
 // mutation in tests), and the policy.Engine (for seeding custom policies).
@@ -75,7 +75,7 @@ func catalogPath() string {
 //
 // A permissive policy (testPolicyName) is pre-seeded that allows ml-dsa-65 and
 // the create_key operation.
-func setupOrchestratorFull(t *testing.T) (keysvc.KeyOrchestrator, key.Repository, provider.Registry, policy.Engine, template.Registry) {
+func setupOrchestratorFull(t *testing.T) (keysvc.Orchestrator, key.Repository, provider.Registry, policy.Engine, template.Registry) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -116,9 +116,9 @@ func setupOrchestratorFull(t *testing.T) (keysvc.KeyOrchestrator, key.Repository
 
 	seedPermissivePolicy(t, ctx, pol)
 
-	orch, err := keysvc.NewKeyOrchestrator(repo, reg, provReg, pol)
+	orch, err := keysvc.NewOrchestrator(repo, reg, provReg, pol)
 	if err != nil {
-		t.Fatalf("keysvc.NewKeyOrchestrator: %v", err)
+		t.Fatalf("keysvc.NewOrchestrator: %v", err)
 	}
 	return orch, repo, provReg, pol, reg
 }
@@ -126,7 +126,7 @@ func setupOrchestratorFull(t *testing.T) (keysvc.KeyOrchestrator, key.Repository
 // setupOrchestratorWithPolicy is a convenience wrapper that returns the
 // orchestrator and policy engine (without the repo). Use setupOrchestratorFull
 // when you also need the underlying key.Repository for lifecycle mutation.
-func setupOrchestratorWithPolicy(t *testing.T) (keysvc.KeyOrchestrator, policy.Engine) {
+func setupOrchestratorWithPolicy(t *testing.T) (keysvc.Orchestrator, policy.Engine) {
 	t.Helper()
 	orch, _, _, pol, _ := setupOrchestratorFull(t)
 	return orch, pol
@@ -134,7 +134,7 @@ func setupOrchestratorWithPolicy(t *testing.T) (keysvc.KeyOrchestrator, policy.E
 
 // setupOrchestrator is a convenience wrapper that returns only the orchestrator.
 // Use setupOrchestratorWithPolicy when you need to seed additional policies.
-func setupOrchestrator(t *testing.T) keysvc.KeyOrchestrator {
+func setupOrchestrator(t *testing.T) keysvc.Orchestrator {
 	t.Helper()
 	orch, _ := setupOrchestratorWithPolicy(t)
 	return orch

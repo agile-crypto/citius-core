@@ -272,7 +272,7 @@ func TestTransformKey_regenerateKeyBytes(t *testing.T) {
 // ── fixture ───────────────────────────────────────────────────────────────
 
 type transformFixture struct {
-	orchestrator KeyOrchestrator
+	orchestrator Orchestrator
 	repo         *fakeKeyRepository
 	providers    *fakeProviderRegistry
 	backend      *countingBackend
@@ -311,7 +311,7 @@ func newTransformFixture(t *testing.T, primitive core.Primitive, sourceScope cor
 		supported: map[string]bool{source.TemplateID(): true, target.TemplateID(): true},
 	}
 
-	o, err := NewKeyOrchestrator(repo, templates, providers, allowAllPolicy{})
+	o, err := NewOrchestrator(repo, templates, providers, allowAllPolicy{})
 	require.NoError(t, err)
 	return &transformFixture{orchestrator: o, repo: repo, providers: providers, backend: backend}
 }

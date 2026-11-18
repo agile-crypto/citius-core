@@ -147,7 +147,7 @@ func TestMigrateKey_providerTypeSkipsInstancesThatCannotReceive(t *testing.T) {
 func TestMigrateKey_providerTypeHonoursPreference(t *testing.T) {
 	f := newMigrateFixture(t)
 	f.backends[migrateFIPSInstance].implementation.HardwareAccelerated = proto.Bool(true)
-	o, err := NewKeyOrchestrator(f.repo, f.templates, f.providers,
+	o, err := NewOrchestrator(f.repo, f.templates, f.providers,
 		providerRulePolicy{requirements: core.ProviderRequirements{PreferHardwareAccelerated: true}})
 	require.NoError(t, err)
 
@@ -426,7 +426,7 @@ func TestMigrateKeySpec_FromProto(t *testing.T) {
 // ── fixture ───────────────────────────────────────────────────────────────
 
 type migrateFixture struct {
-	orchestrator KeyOrchestrator
+	orchestrator Orchestrator
 	repo         *fakeKeyRepository
 	templates    *fakeTemplateRegistry
 	providers    *multiProviderRegistry
@@ -437,7 +437,7 @@ type migrateFixture struct {
 // withPolicy rebuilds the fixture's orchestrator with pol.
 func (f *migrateFixture) withPolicy(t *testing.T, pol policy.Engine) {
 	t.Helper()
-	o, err := NewKeyOrchestrator(f.repo, f.templates, f.providers, pol)
+	o, err := NewOrchestrator(f.repo, f.templates, f.providers, pol)
 	require.NoError(t, err)
 	f.orchestrator = o
 }
@@ -488,7 +488,7 @@ func newMigrateFixture(t *testing.T) *migrateFixture {
 		},
 	}
 
-	o, err := NewKeyOrchestrator(repo, templates, providers, allowAllPolicy{})
+	o, err := NewOrchestrator(repo, templates, providers, allowAllPolicy{})
 	require.NoError(t, err)
 	return &migrateFixture{orchestrator: o, repo: repo, templates: templates, providers: providers, backends: backends, template: tmpl}
 }

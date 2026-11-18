@@ -9,7 +9,7 @@ import (
 // so that callers enforce invariants by invoking aggregate methods rather
 // than inspecting flattened data.
 //
-// Any application service that only reads keys (e.g. CryptoOrchestrator)
+// Any application service that only reads keys (e.g. service/crypto.Orchestrator)
 // should depend on ReadOnlyRepository rather than the full Repository.
 type ReadOnlyRepository interface {
 	// GetKeyByID retrieves a key by public ID (metadata only, no material).

@@ -48,7 +48,7 @@ type MigrateKeySpec struct {
 // key's template and scope, so a request naming either is rejected rather
 // than ignored, as is provider configuration, which no provider consumes yet.
 func (s *MigrateKeySpec) FromProto(ctx context.Context, req *messagespb.MigrateKeyRequest) error {
-	const op = "service.(MigrateKeySpec).FromProto"
+	const op = "service.key.(MigrateKeySpec).FromProto"
 	if req == nil {
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "migrate key request proto is nil")
 	}
@@ -72,7 +72,7 @@ func (s *MigrateKeySpec) FromProto(ctx context.Context, req *messagespb.MigrateK
 // MigrationResult reports the outcome of a MigrateKey call.
 type MigrationResult struct {
 	// Key is the key's metadata at the new current version.
-	Key               *KeyMetadata
+	Key               *Metadata
 	Strategy          messagespb.MigrationStrategy
 	KeyBytesPreserved bool
 	SourceProviderID  string
@@ -97,7 +97,7 @@ type MigrationResult struct {
 // archived version only serves Verify and Decrypt calls that name it.
 // ArchivedKeyInfo.allowed_operations is left empty.
 func (m *MigrationResult) ToProto(ctx context.Context) (*messagespb.MigrateKeyResponse, error) {
-	const op = "service.(MigrationResult).ToProto"
+	const op = "service.key.(MigrationResult).ToProto"
 	if m == nil {
 		return nil, nil
 	}
@@ -129,9 +129,9 @@ func (m *MigrationResult) ToProto(ctx context.Context) (*messagespb.MigrateKeyRe
 }
 
 // MigrateKey moves a key to another provider instance. See
-// KeyOrchestrator.MigrateKey and MigrateKeySpec.
+// Orchestrator.MigrateKey and MigrateKeySpec.
 func (r *keyOrchestrator) MigrateKey(ctx context.Context, spec MigrateKeySpec) (*MigrationResult, error) {
-	const op = "service.(keyOrchestrator).MigrateKey"
+	const op = "service.key.(keyOrchestrator).MigrateKey"
 	if err := validateMigrateKeySpec(ctx, spec); err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
@@ -197,7 +197,7 @@ type migration struct {
 
 // loadMigration reads the key named keyName and its current version.
 func (r *keyOrchestrator) loadMigration(ctx context.Context, keyName string) (*migration, error) {
-	const op = "service.(keyOrchestrator).loadMigration"
+	const op = "service.key.(keyOrchestrator).loadMigration"
 	keyO, err := r.keys.GetKeyByName(ctx, keyName)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -225,7 +225,7 @@ func (r *keyOrchestrator) loadMigration(ctx context.Context, keyName string) (*m
 // and checks everything that can refuse the migration before any side
 // effect. It does not check whether the strategy is implemented.
 func (r *keyOrchestrator) checkMigration(ctx context.Context, m *migration, spec MigrateKeySpec) (provider.Backend, error) {
-	const op = "service.(keyOrchestrator).checkMigration"
+	const op = "service.key.(keyOrchestrator).checkMigration"
 	target, err := r.migrationTarget(ctx, spec, m.key.GetPolicyId(), m.version, m.source, m.template)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -243,7 +243,7 @@ func (r *keyOrchestrator) checkMigration(ctx context.Context, m *migration, spec
 
 // validateMigrateKeySpec checks the request shape before any repository read.
 func validateMigrateKeySpec(ctx context.Context, spec MigrateKeySpec) error {
-	const op = "service.validateMigrateKeySpec"
+	const op = "service.key.validateMigrateKeySpec"
 	if err := validateMigrationTarget(ctx, spec); err != nil {
 		return errors.Wrap(ctx, op, err)
 	}
@@ -269,7 +269,7 @@ func migrationImplemented(strategy messagespb.MigrationStrategy) bool {
 // validateMigrationTarget checks that spec names a key and exactly one
 // target.
 func validateMigrationTarget(ctx context.Context, spec MigrateKeySpec) error {
-	const op = "service.validateMigrationTarget"
+	const op = "service.key.validateMigrationTarget"
 	if spec.KeyName == "" {
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "key name is required")
 	}
@@ -285,7 +285,7 @@ func validateMigrationTarget(ctx context.Context, spec MigrateKeySpec) error {
 // nothing from the source; every transfer strategy needs it to vouch for
 // the material.
 func (r *keyOrchestrator) migrationSource(ctx context.Context, instance string) (provider.Backend, error) {
-	const op = "service.(keyOrchestrator).migrationSource"
+	const op = "service.key.(keyOrchestrator).migrationSource"
 	b, err := r.providers.Get(ctx, instance)
 	switch {
 	case err == nil:
@@ -331,7 +331,7 @@ func backendType(b provider.Backend) string {
 // any other error stops the search.
 func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySpec, policyID string,
 	version *key.Version, source provider.Backend, tmpl *template.Template) (provider.Backend, error) {
-	const op = "service.(keyOrchestrator).migrationTarget"
+	const op = "service.key.(keyOrchestrator).migrationTarget"
 	sourceInstance := version.GetProviderId()
 	if spec.TargetInstanceID == sourceInstance {
 		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
@@ -385,7 +385,7 @@ func (r *keyOrchestrator) migrationTarget(ctx context.Context, spec MigrateKeySp
 // accepted; any other error stops the search.
 func (r *keyOrchestrator) firstMigrationTarget(ctx context.Context, spec MigrateKeySpec, sourceInstance string,
 	custody provider.Requirements, candidate func(name string) (provider.Backend, error)) (provider.Backend, error) {
-	const op = "service.(keyOrchestrator).firstMigrationTarget"
+	const op = "service.key.(keyOrchestrator).firstMigrationTarget"
 	var passedOver []string
 	for _, c := range provider.Rank(r.providers.List(ctx), custody) {
 		b := c.Backend

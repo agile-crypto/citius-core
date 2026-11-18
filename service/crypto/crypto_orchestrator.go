@@ -7,10 +7,10 @@ import (
 	"github.com/agile-crypto/citius-core/key"
 )
 
-// CryptoOrchestrator performs cryptographic operations using stored keys.
+// Orchestrator performs cryptographic operations using stored keys.
 // Implementations coordinate key retrieval, policy validation, and provider dispatch
 // crossing aggregate boundaries.
-type CryptoOrchestrator interface {
+type Orchestrator interface {
 	Sign(ctx context.Context, req crypto.SignRequest) (crypto.SignResult, error)
 	Verify(ctx context.Context, req crypto.VerifyRequest) (crypto.VerifyResult, error)
 	DigestSign(ctx context.Context, req crypto.DigestSignRequest) (crypto.SignResult, error)
@@ -27,6 +27,6 @@ type CryptoOrchestrator interface {
 	VerifyWithPublicKey(ctx context.Context, req crypto.VerifyWithPublicKeyRequest) (crypto.VerifyWithPublicKeyResult, error)
 }
 
-// CryptoOrchestratorFactory builds the cryptographic-operation orchestrator for
-// one request, under the same rules as KeyOrchestratorFactory.
-type CryptoOrchestratorFactory func(ctx context.Context) (CryptoOrchestrator, error)
+// OrchestratorFactory builds the cryptographic-operation orchestrator for
+// one request, under the same rules as key.OrchestratorFactory.
+type OrchestratorFactory func(ctx context.Context) (Orchestrator, error)

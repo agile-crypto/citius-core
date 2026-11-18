@@ -35,11 +35,11 @@ func catalogPath() string {
 // Shared Crypto Orchestrator Setup
 // ============================================================================
 
-// setupCryptoOrchestratorFull creates a fully wired cryptosvc.CryptoOrchestrator backed
+// setupCryptoOrchestratorFull creates a fully wired cryptosvc.Orchestrator backed
 // by in-memory storage, the software provider, and the standard algorithm
-// catalog. It returns the cryptosvc.CryptoOrchestrator, cryptosvc.KeyOrchestrator (for creating
+// catalog. It returns the cryptosvc.Orchestrator, keysvc.Orchestrator (for creating
 // keys in tests), and policy.Engine (for seeding custom policies).
-func setupCryptoOrchestratorFull(t *testing.T) (cryptosvc.CryptoOrchestrator, keysvc.KeyOrchestrator, policy.Engine) {
+func setupCryptoOrchestratorFull(t *testing.T) (cryptosvc.Orchestrator, keysvc.Orchestrator, policy.Engine) {
 	t.Helper()
 	ctx := context.Background()
 	store := &storage.InmemStorage{}
@@ -76,14 +76,14 @@ func setupCryptoOrchestratorFull(t *testing.T) (cryptosvc.CryptoOrchestrator, ke
 		t.Fatalf("NewEnforcer: %v", err)
 	}
 
-	keyOrch, err := keysvc.NewKeyOrchestrator(repo, reg, provReg, pol)
+	keyOrch, err := keysvc.NewOrchestrator(repo, reg, provReg, pol)
 	if err != nil {
-		t.Fatalf("keysvc.NewKeyOrchestrator: %v", err)
+		t.Fatalf("keysvc.NewOrchestrator: %v", err)
 	}
 
-	ops, err := cryptosvc.NewCryptoOrchestrator(repo, pol, provReg, reg)
+	ops, err := cryptosvc.NewOrchestrator(repo, pol, provReg, reg)
 	if err != nil {
-		t.Fatalf("cryptosvc.NewCryptoOrchestrator: %v", err)
+		t.Fatalf("cryptosvc.NewOrchestrator: %v", err)
 	}
 	return ops, keyOrch, pol
 }

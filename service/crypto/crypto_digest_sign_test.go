@@ -48,15 +48,15 @@ func seedDigestSignPolicy(t *testing.T, ctx context.Context, pol policy.Engine) 
 	}
 }
 
-// setupDigestSignWithKey creates a wired cryptosvc.CryptoOrchestrator, seeds a policy
+// setupDigestSignWithKey creates a wired cryptosvc.Orchestrator, seeds a policy
 // that allows create_key + digest_sign + digest_verify for
-// ecdsa-p256-prehashed-der, creates a key, and returns the cryptosvc.CryptoOrchestrator
+// ecdsa-p256-prehashed-der, creates a key, and returns the cryptosvc.Orchestrator
 // and the key's name.
 //
 // ECDSA is used (not ML-DSA) because the software provider's SignDigest is
 // currently hard-coded to ECDSA-P256 only — the AlgorithmDetails-based
 // dispatch is a later change.
-func setupDigestSignWithKey(t *testing.T) (cryptosvc.CryptoOrchestrator, string) {
+func setupDigestSignWithKey(t *testing.T) (cryptosvc.Orchestrator, string) {
 	t.Helper()
 	ctx := context.Background()
 	ops, keyOrch, pol := setupCryptoOrchestratorFull(t)
@@ -265,7 +265,7 @@ func TestDigestSign_acceptedDigestHashes(t *testing.T) {
 	ops, keyOrch, pol := setupCryptoOrchestratorFull(t)
 	seedDigestSignPolicy(t, ctx, pol)
 
-	create := func(name string, hashes ...types.HashAlgorithm) *keysvc.KeyMetadata {
+	create := func(name string, hashes ...types.HashAlgorithm) *keysvc.Metadata {
 		t.Helper()
 		spec := scopeSpecWithScope(t, core.ScopeSignaturePrehashed)
 		if len(hashes) > 0 {

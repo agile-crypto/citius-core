@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// keyOrchestrator implements the KeyOrchestrator interface.
+// keyOrchestrator implements the Orchestrator interface.
 // It requires key.Repository, template.Registry, provider.Registry, and policy.Engine to function.
 type keyOrchestrator struct {
 	keys      key.Repository
@@ -27,15 +27,15 @@ type keyOrchestrator struct {
 	policy    policy.Engine
 }
 
-// NewKeyOrchestrator creates a new KeyOrchestrator.
+// NewOrchestrator creates a new Orchestrator.
 // All four dependencies are required; returns an error if any is nil.
-func NewKeyOrchestrator(
+func NewOrchestrator(
 	keys key.Repository,
 	templates template.Registry,
 	providers provider.Registry,
 	policyEngine policy.Engine,
-) (KeyOrchestrator, error) {
-	const op errors.Op = "service.NewKeyOrchestrator"
+) (Orchestrator, error) {
+	const op errors.Op = "service.key.NewOrchestrator"
 	ctx := context.Background()
 
 	if keys == nil {
@@ -70,7 +70,7 @@ func NewKeyOrchestrator(
 // (its pinned instance, if any, and provider requirements) implements. A template no such provider can
 // serve is never chosen, however early the policy lists it.
 func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, templateID string, scopeSpec *core.ScopeSpecification, custody provider.Requirements) (*template.Template, error) {
-	const op = "service.(keyOrchestrator).pickTemplate"
+	const op = "service.key.(keyOrchestrator).pickTemplate"
 	if templateID != "" {
 		candidates := template.OnlyTemplates(templateID)
 		if len(candidates.IDs()) != 1 {
@@ -118,7 +118,7 @@ func (r *keyOrchestrator) pickTemplate(ctx context.Context, policyID string, tem
 // the requirements" answer excludes a template; any other error from the
 // registry is returned.
 func (r *keyOrchestrator) servable(ctx context.Context, ids []string, custody provider.Requirements) ([]string, error) {
-	const op = "service.(keyOrchestrator).servable"
+	const op = "service.key.(keyOrchestrator).servable"
 	var out []string
 	for _, id := range ids {
 		custody.TemplateID = id
@@ -133,8 +133,8 @@ func (r *keyOrchestrator) servable(ctx context.Context, ids []string, custody pr
 	}
 	return out, nil
 }
-func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpec) (*KeyMetadata, error) {
-	const op errors.Op = "service.(keyOrchestrator).CreateKey"
+func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpec) (*Metadata, error) {
+	const op errors.Op = "service.key.(keyOrchestrator).CreateKey"
 
 	// 1. Validate request
 	if req.Name == "" {
@@ -187,7 +187,7 @@ func (r *keyOrchestrator) CreateKey(ctx context.Context, req core.KeyCreationSpe
 // requirements merged with requested. A request can add to the policy's
 // requirements but never relax them.
 func (r *keyOrchestrator) custody(ctx context.Context, policyID, pinned string, requested core.ProviderRequirements) (provider.Requirements, error) {
-	const op = "service.(keyOrchestrator).custody"
+	const op = "service.key.(keyOrchestrator).custody"
 	fromPolicy, err := r.policy.ProviderRequirements(ctx, policyID)
 	if err != nil {
 		return provider.Requirements{}, errors.Wrap(ctx, op, err)
@@ -199,7 +199,7 @@ func (r *keyOrchestrator) custody(ctx context.Context, policyID, pinned string, 
 // those a provider meeting custody implements, and returns it with the scope
 // specification to store on that version.
 func (r *keyOrchestrator) pickVersionTemplate(ctx context.Context, policyID, templateID string, spec *core.ScopeSpecification, custody provider.Requirements) (*template.Template, *core.ScopeSpecification, error) {
-	const op = "service.(keyOrchestrator).pickVersionTemplate"
+	const op = "service.key.(keyOrchestrator).pickVersionTemplate"
 	if err := validateRequestedDigestHashes(ctx, spec); err != nil {
 		return nil, nil, errors.Wrap(ctx, op, err)
 	}
@@ -217,7 +217,7 @@ func (r *keyOrchestrator) pickVersionTemplate(ctx context.Context, policyID, tem
 // validateRequestedDigestHashes rejects accepted digest hashes on a scope
 // whose input is not a digest.
 func validateRequestedDigestHashes(ctx context.Context, spec *core.ScopeSpecification) error {
-	const op = "service.validateRequestedDigestHashes"
+	const op = "service.key.validateRequestedDigestHashes"
 	if !spec.Scope.IsPrehashed() && len(spec.AcceptedDigestHashes()) > 0 {
 		return errors.New(ctx, op, errors.CodeInvalidArgument,
 			"accepted_digest_hashes applies only to prehashed signature scopes, not %s", spec.Scope)
@@ -231,7 +231,7 @@ func validateRequestedDigestHashes(ctx context.Context, spec *core.ScopeSpecific
 // template's own list when the request names none. Other scopes are returned
 // unchanged. The caller's spec is never modified.
 func resolveDigestHashes(ctx context.Context, tmpl *template.Template, spec *core.ScopeSpecification) (*core.ScopeSpecification, error) {
-	const op = "service.resolveDigestHashes"
+	const op = "service.key.resolveDigestHashes"
 	if !spec.Scope.IsPrehashed() {
 		return spec, nil
 	}
@@ -258,7 +258,7 @@ func resolveDigestHashes(ctx context.Context, tmpl *template.Template, spec *cor
 }
 
 // keyMetadata projects a key.Key and one of its versions into the API-facing
-// KeyMetadata, with everything the server knows about them: the key's times,
+// Metadata, with everything the server knows about them: the key's times,
 // the version's template and provider, the template itself, the provider's
 // implementation properties, where the material came from and, for an
 // asymmetric key, its public key. v may be nil; version-scoped fields are
@@ -267,9 +267,9 @@ func resolveDigestHashes(ctx context.Context, tmpl *template.Template, spec *cor
 // A field is left unset only when there is nothing to report: a template no
 // longer in the catalogue, a provider instance no longer registered, a
 // symmetric key's public key, or an origin a version did not record.
-func (r *keyOrchestrator) keyMetadata(ctx context.Context, k *key.Key, v *key.Version) (*KeyMetadata, error) {
-	const op = "service.(keyOrchestrator).keyMetadata"
-	md := &KeyMetadata{
+func (r *keyOrchestrator) keyMetadata(ctx context.Context, k *key.Key, v *key.Version) (*Metadata, error) {
+	const op = "service.key.(keyOrchestrator).keyMetadata"
+	md := &Metadata{
 		Name:           k.GetName(),
 		KeyID:          k.GetPublicId(),
 		Primitive:      k.GetPrimitive(),
@@ -330,7 +330,7 @@ func (r *keyOrchestrator) keyMetadata(ctx context.Context, k *key.Key, v *key.Ve
 // version's origin: a transform or a migration does not create material.
 // UNSPECIFIED when the chain reaches a version that recorded no origin.
 func (r *keyOrchestrator) materialOrigin(ctx context.Context, v *key.Version) (types.KeyOrigin, error) {
-	const op = "service.(keyOrchestrator).materialOrigin"
+	const op = "service.key.(keyOrchestrator).materialOrigin"
 	// Each step goes to a strictly earlier version, so the walk ends.
 	for {
 		origin := v.GetOrigin()
@@ -358,7 +358,7 @@ func (r *keyOrchestrator) materialOrigin(ctx context.Context, v *key.Version) (t
 // and its format; nil for a symmetric key, which has none. The format is
 // nil when the provider did not record the public key's encoding.
 func publicKeyOf(ctx context.Context, v *key.Version) ([]byte, *types.KeyFormat, error) {
-	const op = "service.publicKeyOf"
+	const op = "service.key.publicKeyOf"
 	var stored providerpb.GenerateKeyResponse
 	if err := proto.Unmarshal(v.GetKeyMaterial(), &stored); err != nil {
 		return nil, nil, errors.Wrap(ctx, op, err, errors.WithMessage("stored key material is not a GenerateKeyResponse"))
@@ -395,7 +395,7 @@ func (r *keyOrchestrator) generateAndPersistKey(
 	tmpl *template.Template,
 	scopeSpec *core.ScopeSpecification,
 	custody provider.Requirements,
-) (*KeyMetadata, error) {
+) (*Metadata, error) {
 	// 1. Find a provider that supports this template — honouring an explicit
 	// provider_id pin and the provider requirements of the request and
 	// policy, rather than just the first provider that advertises the
@@ -462,8 +462,8 @@ func (r *keyOrchestrator) generateAndPersistKey(
 	return r.keyMetadata(ctx, stored, v)
 }
 
-func (r *keyOrchestrator) ReadKey(ctx context.Context, keyName string, version uint32) (*KeyMetadata, error) {
-	const op errors.Op = "service.(keyOrchestrator).ReadKey"
+func (r *keyOrchestrator) ReadKey(ctx context.Context, keyName string, version uint32) (*Metadata, error) {
+	const op errors.Op = "service.key.(keyOrchestrator).ReadKey"
 	k, err := r.keys.GetKeyByName(ctx, keyName)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -480,13 +480,13 @@ func (r *keyOrchestrator) ReadKey(ctx context.Context, keyName string, version u
 	return r.keyMetadata(ctx, k, v)
 }
 
-func (r *keyOrchestrator) ListKeys(ctx context.Context) ([]*KeyMetadata, error) {
-	const op errors.Op = "service.(keyOrchestrator).ListKeys"
+func (r *keyOrchestrator) ListKeys(ctx context.Context) ([]*Metadata, error) {
+	const op errors.Op = "service.key.(keyOrchestrator).ListKeys"
 	keys, err := r.keys.ListKeys(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
 	}
-	out := make([]*KeyMetadata, 0, len(keys))
+	out := make([]*Metadata, 0, len(keys))
 	for _, k := range keys {
 		v, verr := r.keys.GetCurrentVersion(ctx, k.GetPublicId())
 		if verr != nil {
@@ -502,7 +502,7 @@ func (r *keyOrchestrator) ListKeys(ctx context.Context) ([]*KeyMetadata, error) 
 }
 
 func (r *keyOrchestrator) DeleteKey(ctx context.Context, keyName string) error {
-	const op errors.Op = "service.(keyOrchestrator).DeleteKey"
+	const op errors.Op = "service.key.(keyOrchestrator).DeleteKey"
 	// 1. Fetch key metadata.
 	k, err := r.keys.GetKeyByName(ctx, keyName)
 	if err != nil {
@@ -515,33 +515,33 @@ func (r *keyOrchestrator) DeleteKey(ctx context.Context, keyName string) error {
 	return nil
 }
 
-func (r *keyOrchestrator) RotateKey(ctx context.Context, _ string) (*KeyMetadata, error) {
-	return nil, errors.New(ctx, "service.(keyOrchestrator).RotateKey", errors.CodeNotImplemented,
+func (r *keyOrchestrator) RotateKey(ctx context.Context, _ string) (*Metadata, error) {
+	return nil, errors.New(ctx, "service.key.(keyOrchestrator).RotateKey", errors.CodeNotImplemented,
 		"RotateKey not yet implemented")
 }
 
 func (r *keyOrchestrator) SuspendKey(ctx context.Context, _ string) error {
-	return errors.New(ctx, "service.(keyOrchestrator).SuspendKey", errors.CodeNotImplemented,
+	return errors.New(ctx, "service.key.(keyOrchestrator).SuspendKey", errors.CodeNotImplemented,
 		"SuspendKey not yet implemented")
 }
 
 func (r *keyOrchestrator) RestoreKey(ctx context.Context, _ string) error {
-	return errors.New(ctx, "service.(keyOrchestrator).RestoreKey", errors.CodeNotImplemented,
+	return errors.New(ctx, "service.key.(keyOrchestrator).RestoreKey", errors.CodeNotImplemented,
 		"RestoreKey not yet implemented")
 }
 
 func (r *keyOrchestrator) DestroyKey(ctx context.Context, _ string) error {
-	return errors.New(ctx, "service.(keyOrchestrator).DestroyKey", errors.CodeNotImplemented,
+	return errors.New(ctx, "service.key.(keyOrchestrator).DestroyKey", errors.CodeNotImplemented,
 		"DestroyKey not yet implemented")
 }
 
-func (r *keyOrchestrator) ImportKey(ctx context.Context, _ core.ImportKeySpec) (*KeyMetadata, error) {
-	return nil, errors.New(ctx, "service.(keyOrchestrator).ImportKey", errors.CodeNotImplemented,
+func (r *keyOrchestrator) ImportKey(ctx context.Context, _ core.ImportKeySpec) (*Metadata, error) {
+	return nil, errors.New(ctx, "service.key.(keyOrchestrator).ImportKey", errors.CodeNotImplemented,
 		"ImportKey not yet implemented")
 }
 
 func (r *keyOrchestrator) UpdateKeyPolicy(ctx context.Context, _ string, _ string) error {
-	return errors.New(ctx, "service.(keyOrchestrator).UpdateKeyPolicy", errors.CodeNotImplemented,
+	return errors.New(ctx, "service.key.(keyOrchestrator).UpdateKeyPolicy", errors.CodeNotImplemented,
 		"UpdateKeyPolicy not yet implemented")
 }
 
@@ -554,7 +554,7 @@ func (r *keyOrchestrator) UpdateKeyPolicy(ctx context.Context, _ string, _ strin
 // belongs to exactly one primitive, this also keeps the key's primitive, in
 // both regenerate and retain mode.
 func validateTransformScope(ctx context.Context, currentScope core.Scope, scopeSpec *core.ScopeSpecification) error {
-	const op = "service.validateTransformScope"
+	const op = "service.key.validateTransformScope"
 	if scopeSpec == nil || !scopeSpec.Scope.IsValid() {
 		return errors.New(ctx, op, errors.CodeInvalidArgument, "scope specification is required")
 	}
@@ -568,7 +568,7 @@ func validateTransformScope(ctx context.Context, currentScope core.Scope, scopeS
 
 // versionScope returns the scope recorded on a key version.
 func versionScope(ctx context.Context, v *key.Version) (core.Scope, error) {
-	const op = "service.versionScope"
+	const op = "service.key.versionScope"
 	spec := &core.ScopeSpecification{}
 	if err := spec.Deserialize(ctx, v.GetScopeSpecification()); err != nil {
 		return core.ScopeUnknown, errors.Wrap(ctx, op, err)
@@ -577,7 +577,7 @@ func versionScope(ctx context.Context, v *key.Version) (core.Scope, error) {
 }
 
 func retainedKeyMaterial(ctx context.Context, sourceTemplate, targetTemplate *template.Template, stored []byte) ([]byte, error) {
-	const op = "service.retainedKeyMaterial"
+	const op = "service.key.retainedKeyMaterial"
 	compatible, err := template.CompatibleKeyMaterial(sourceTemplate, targetTemplate)
 	if err != nil {
 		return nil, errors.New(ctx, op, errors.CodeFailedPrecondition,
@@ -597,8 +597,8 @@ func retainedKeyMaterial(ctx context.Context, sourceTemplate, targetTemplate *te
 	return append([]byte(nil), stored...), nil
 }
 
-func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpec) (*KeyMetadata, error) {
-	const op = "service.(keyOrchestrator).TransformKey"
+func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpec) (*Metadata, error) {
+	const op = "service.key.(keyOrchestrator).TransformKey"
 	if spec.KeyName == "" {
 		return nil, errors.New(ctx, op, errors.CodeInvalidArgument, "key name is required")
 	}
@@ -672,7 +672,7 @@ func (r *keyOrchestrator) TransformKey(ctx context.Context, spec TransformKeySpe
 // refuse, else that of new material.
 func transformProvenance(ctx context.Context, custody provider.Requirements, retain bool,
 	lastVersion *key.Version, prov provider.Backend, tmpl *template.Template) (key.Provenance, error) {
-	const op = "service.transformProvenance"
+	const op = "service.key.transformProvenance"
 	if !retain {
 		return generatedProvenance(prov, tmpl), nil
 	}
@@ -690,8 +690,8 @@ func transformProvenance(ctx context.Context, custody provider.Requirements, ret
 // lastVersion, with the given provenance, and returns the key's metadata at
 // that version.
 func (r *keyOrchestrator) appendVersion(ctx context.Context, keyO *key.Key, lastVersion *key.Version,
-	templateID, providerID string, keyMaterial []byte, versionSpec *core.ScopeSpecification, provenance key.Provenance) (*KeyMetadata, error) {
-	const op = "service.(keyOrchestrator).appendVersion"
+	templateID, providerID string, keyMaterial []byte, versionSpec *core.ScopeSpecification, provenance key.Provenance) (*Metadata, error) {
+	const op = "service.key.(keyOrchestrator).appendVersion"
 	newVersionNumber := lastVersion.GetVersion() + 1
 	newVersionID := computeVersionID(keyO.GetPublicId(), newVersionNumber)
 	newVersion, err := key.NewVersion(ctx, newVersionID, keyO.GetPublicId(), templateID, providerID, newVersionNumber,
@@ -720,7 +720,7 @@ func (r *keyOrchestrator) appendVersion(ctx context.Context, keyO *key.Key, last
 // freshly generated material otherwise. prov has already been matched for
 // target, so retain mode never calls GenerateKey.
 func (r *keyOrchestrator) transformKeyMaterial(ctx context.Context, retain bool, lastVersion *key.Version, target *template.Template, prov provider.Backend) ([]byte, error) {
-	const op = "service.(keyOrchestrator).transformKeyMaterial"
+	const op = "service.key.(keyOrchestrator).transformKeyMaterial"
 	if !retain {
 		return generateKeyMaterial(ctx, op, prov, target)
 	}
@@ -735,7 +735,7 @@ func (r *keyOrchestrator) transformKeyMaterial(ctx context.Context, retain bool,
 // retainMaterial loads the source template of lastVersion and returns a copy
 // of its stored payload if the key material is compatible with target.
 func (r *keyOrchestrator) retainMaterial(ctx context.Context, lastVersion *key.Version, target *template.Template) ([]byte, error) {
-	const op = "service.(keyOrchestrator).retainMaterial"
+	const op = "service.key.(keyOrchestrator).retainMaterial"
 	source, err := r.templates.Get(ctx, lastVersion.GetTemplateId())
 	if err != nil {
 		return nil, errors.Wrap(ctx, op, err)
@@ -780,7 +780,7 @@ func generateAndValidateKey(ctx context.Context, op errors.Op, prov provider.Bac
 // A transform operation is authorized if an equivalent create key operation is allowed.
 func (r *keyOrchestrator) validateTransformOp(ctx context.Context, keyName string, policyID string, scopeSpec *core.ScopeSpecification, provider provider.Backend,
 	template *template.Template, keyLabels map[string]string) error {
-	const op = "service.(keyOrchestrator).validateTransformOp"
+	const op = "service.key.(keyOrchestrator).validateTransformOp"
 	// Policy: validate that create_key with this template is permitted.
 	if err := r.policy.ValidateOperation(ctx, policyID,
 		core.OperationCreateKey, template.TemplateID(), provider.Name()); err != nil {
@@ -802,5 +802,5 @@ func (r *keyOrchestrator) validateTransformOp(ctx context.Context, keyName strin
 	return nil
 }
 
-// Compile-time assertion: keyOrchestrator implements KeyOrchestrator.
-var _ KeyOrchestrator = (*keyOrchestrator)(nil)
+// Compile-time assertion: keyOrchestrator implements Orchestrator.
+var _ Orchestrator = (*keyOrchestrator)(nil)

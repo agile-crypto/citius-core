@@ -14,7 +14,7 @@ import (
 	"github.com/agile-crypto/citius-core/policy"
 )
 
-// setupCryptoWithScopedKey creates a wired cryptosvc.CryptoOrchestrator holding one
+// setupCryptoWithScopedKey creates a wired cryptosvc.Orchestrator holding one
 // ml-dsa-65 key bound to the given scope.
 //
 // ml-dsa-65 is the right template for this: its catalog entry declares both a
@@ -22,7 +22,7 @@ import (
 // the same template can back a key under either scope, and the key's own
 // ScopeSpecification — fixed here at creation — is what pins down which
 // contract that key actually offers its callers.
-func setupCryptoWithScopedKey(t *testing.T, scope core.Scope) (cryptosvc.CryptoOrchestrator, string) {
+func setupCryptoWithScopedKey(t *testing.T, scope core.Scope) (cryptosvc.Orchestrator, string) {
 	t.Helper()
 	ctx := context.Background()
 	ops, keyOrch, pol := setupCryptoOrchestratorFull(t)

@@ -18,7 +18,7 @@
 //   - internal/core/ imports only internal/errors (absolute leaf).
 //   - Every domain package imports core as its shared vocabulary.
 //
-// Application service interfaces (KeyOrchestrator, CryptoOrchestrator) live
+// Application service interfaces (key.Orchestrator, crypto.Orchestrator) live
 // in internal/service/. The Service facade and factory types live in
 // internal/app/.
 package core

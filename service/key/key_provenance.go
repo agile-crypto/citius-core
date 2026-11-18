@@ -59,7 +59,7 @@ func keptProvenance(source *key.Version, prov provider.Backend, tmpl *template.T
 // ensures it meets the requirement; this ensures the material does too,
 // since kept material carries its history with it.
 func requireKeptLineage(ctx context.Context, custody provider.Requirements, source *key.Version) error {
-	const op = "service.requireKeptLineage"
+	const op = "service.key.requireKeptLineage"
 	if custody.Implementation.ApprovedGeneration && !source.GetApprovedLineage() {
 		return errors.New(ctx, op, errors.CodeFailedPrecondition,
 			"the key's policy requires approved generation, and the material of version %d was not generated and kept only by approved modules; rekey instead",

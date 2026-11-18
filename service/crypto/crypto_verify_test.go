@@ -43,10 +43,10 @@ func seedVerifyPolicy(t *testing.T, ctx context.Context, pol policy.Engine) {
 	}
 }
 
-// setupCryptoWithKeyForVerify creates a wired cryptosvc.CryptoOrchestrator, seeds a
+// setupCryptoWithKeyForVerify creates a wired cryptosvc.Orchestrator, seeds a
 // policy that allows create_key + sign + verify for ml-dsa-65, creates a key,
-// and returns the cryptosvc.CryptoOrchestrator and the key's public ID.
-func setupCryptoWithKeyForVerify(t *testing.T) (cryptosvc.CryptoOrchestrator, string) {
+// and returns the cryptosvc.Orchestrator and the key's public ID.
+func setupCryptoWithKeyForVerify(t *testing.T) (cryptosvc.Orchestrator, string) {
 	t.Helper()
 	ctx := context.Background()
 	ops, keyOrch, pol := setupCryptoOrchestratorFull(t)

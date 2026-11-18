@@ -7,7 +7,7 @@ import (
 )
 
 // Evaluator validates operations and key creation against stored policies.
-// This is the interface that KeyOrchestrator and CryptoOrchestrator should depend on.
+// This is the interface that service/key.Orchestrator and service/crypto.Orchestrator should depend on.
 // Denial IS the error — methods return nil on allow, typed error on deny.
 type Evaluator interface {
 	// ValidateOperation checks whether a crypto operation is allowed under the named policy.
@@ -61,7 +61,7 @@ type Manager interface {
 
 // Engine is the full policy interface. Enforcer implements this.
 // Consumers should prefer the narrow interface they actually need:
-//   - KeyOrchestrator/CryptoOrchestrator => Evaluator
+//   - key.Orchestrator/crypto.Orchestrator => Evaluator
 //   - Policy gRPC handler => Manager (and optionally Evaluator for EvaluatePolicy)
 type Engine interface {
 	Evaluator

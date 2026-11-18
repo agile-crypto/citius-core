@@ -31,17 +31,17 @@ const (
 	ecdsaTemplate = "ecdsa-p256-sha256-der" // SPKI public key in software
 )
 
-// publicKeyFixture is a cryptosvc.CryptoOrchestrator wired with a single
+// publicKeyFixture is a cryptosvc.Orchestrator wired with a single
 // software provider, plus what tests need to produce key pairs and
 // signatures outside the orchestrator: VerifyWithPublicKey involves no
 // stored key.
 type publicKeyFixture struct {
-	ops       cryptosvc.CryptoOrchestrator
+	ops       cryptosvc.Orchestrator
 	sw        *software.Provider
 	templates template.Registry
 }
 
-// setupPublicKeyVerify creates a cryptosvc.CryptoOrchestrator backed by
+// setupPublicKeyVerify creates a cryptosvc.Orchestrator backed by
 // in-memory storage, the standard algorithm catalog and only the software
 // provider, and seeds publicKeyVerifyPolicyName and
 // publicKeyECDSAOnlyPolicyName.
@@ -82,9 +82,9 @@ func setupPublicKeyVerify(t *testing.T) publicKeyFixture {
 	seedVerifyOnlyPolicy(t, ctx, pol, "pol_pkverify", publicKeyVerifyPolicyName, mldsaTemplate, ecdsaTemplate)
 	seedVerifyOnlyPolicy(t, ctx, pol, "pol_pkverifyecdsa", publicKeyECDSAOnlyPolicyName, ecdsaTemplate)
 
-	ops, err := cryptosvc.NewCryptoOrchestrator(repo, pol, provReg, reg)
+	ops, err := cryptosvc.NewOrchestrator(repo, pol, provReg, reg)
 	if err != nil {
-		t.Fatalf("cryptosvc.NewCryptoOrchestrator: %v", err)
+		t.Fatalf("cryptosvc.NewOrchestrator: %v", err)
 	}
 	return publicKeyFixture{ops: ops, sw: sw, templates: reg}
 }

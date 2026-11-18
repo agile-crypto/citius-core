@@ -39,7 +39,7 @@ func newSelectionFixture(t *testing.T, allowed []string) *migrateFixture {
 	return f
 }
 
-func createByScope(f *migrateFixture, pinned string) (*KeyMetadata, error) {
+func createByScope(f *migrateFixture, pinned string) (*Metadata, error) {
 	return f.orchestrator.CreateKey(context.Background(), core.KeyCreationSpec{
 		Name:               "created",
 		PolicyID:           transformPolicyID,
@@ -140,10 +140,10 @@ func TestCreateKey_scopeSelectionAppliesProviderRequirementsWithoutAPin(t *testi
 	} {
 		require.NoError(t, registry.Register(context.Background(), b))
 	}
-	o, err := NewKeyOrchestrator(f.repo, f.templates, registry, templateListPolicy{allowed: []string{opensslOnly, f.template.TemplateID()}})
+	o, err := NewOrchestrator(f.repo, f.templates, registry, templateListPolicy{allowed: []string{opensslOnly, f.template.TemplateID()}})
 	require.NoError(t, err)
 
-	create := func(name string, reqs core.ProviderRequirements) *KeyMetadata {
+	create := func(name string, reqs core.ProviderRequirements) *Metadata {
 		md, err := o.CreateKey(context.Background(), core.KeyCreationSpec{
 			Name:                 name,
 			PolicyID:             transformPolicyID,

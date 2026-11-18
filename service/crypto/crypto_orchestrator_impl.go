@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// cryptoOrchestrator implements CryptoOrchestrator.
+// cryptoOrchestrator implements Orchestrator.
 // It coordinates key retrieval, policy validation, and provider dispatch
 // for cryptographic operations.
 type cryptoOrchestrator struct {
@@ -28,15 +28,15 @@ type cryptoOrchestrator struct {
 	templates template.Registry
 }
 
-// NewCryptoOrchestrator creates a new CryptoOrchestrator.
+// NewOrchestrator creates a new Orchestrator.
 // All four dependencies are required; returns an error if any is nil.
-func NewCryptoOrchestrator(
+func NewOrchestrator(
 	kr key.ReadOnlyRepository,
 	pe policy.Engine,
 	pr provider.Registry,
 	tr template.Registry,
-) (CryptoOrchestrator, error) {
-	const op errors.Op = "service.crypto.NewCryptoOrchestrator"
+) (Orchestrator, error) {
+	const op errors.Op = "service.crypto.NewOrchestrator"
 	ctx := context.Background()
 
 	if kr == nil {
@@ -1188,4 +1188,4 @@ func validateEncryptionScopeParams(
 }
 
 // Compile-time assertion
-var _ CryptoOrchestrator = (*cryptoOrchestrator)(nil)
+var _ Orchestrator = (*cryptoOrchestrator)(nil)

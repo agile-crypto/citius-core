@@ -12,14 +12,14 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// KeyMetadata holds the metadata of a key as returned by CreateKey, ReadKey,
+// Metadata holds the metadata of a key as returned by CreateKey, ReadKey,
 // RotateKey, TransformKey or ListKeys.
 //
 // It is an application-layer read model assembled from the key.Key aggregate,
 // its current key.Version, and the associated template.Template. It lives in
-// the service package because it is produced by KeyOrchestrator and consumed
+// the service package because it is produced by Orchestrator and consumed
 // by the gRPC handler — both of which already depend on internal/service.
-type KeyMetadata struct {
+type Metadata struct {
 	Name       string
 	Version    uint32
 	KeyID      string
@@ -63,10 +63,10 @@ type KeyMetadata struct {
 	PublicKeyFormat *types.KeyFormat // Format of public key material (e.g., RAW, PKCS8, JWK)
 }
 
-// ToProto converts KeyMetadata to its protobuf representation.
+// ToProto converts Metadata to its protobuf representation.
 // Returns nil if m is nil.
-func (m *KeyMetadata) ToProto(ctx context.Context) (*messages.KeyMetadata, error) {
-	const op = "service.(KeyMetadata).ToProto"
+func (m *Metadata) ToProto(ctx context.Context) (*messages.KeyMetadata, error) {
+	const op = "service.key.(Metadata).ToProto"
 	if m == nil {
 		return nil, nil
 	}
