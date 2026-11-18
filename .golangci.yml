@@ -55,7 +55,7 @@ linters:
         policy-no-siblings:
           list-mode: lax
           files:
-            - '**/policy/*.go'
+            - '**/citius-core/policy/*.go'
           deny:
             - pkg: github.com/agile-crypto/citius-core/key
               desc: sibling bounded context
@@ -68,7 +68,7 @@ linters:
         key-no-siblings:
           list-mode: lax
           files:
-            - '**/key/*.go'
+            - '**/citius-core/key/*.go'
           deny:
             - pkg: github.com/agile-crypto/citius-core/policy
               desc: sibling bounded context
@@ -81,7 +81,7 @@ linters:
         provider-no-siblings:
           list-mode: lax
           files:
-            - '**/provider/*.go'
+            - '**/citius-core/provider/*.go'
           deny:
             - pkg: github.com/agile-crypto/citius-core/policy
               desc: sibling bounded context
@@ -94,7 +94,7 @@ linters:
         template-no-siblings:
           list-mode: lax
           files:
-            - '**/template/*.go'
+            - '**/citius-core/template/*.go'
           deny:
             - pkg: github.com/agile-crypto/citius-core/policy
               desc: sibling bounded context
@@ -109,7 +109,7 @@ linters:
         crypto-no-siblings:
           list-mode: lax
           files:
-            - '**/crypto/*.go'
+            - '**/citius-core/crypto/*.go'
           deny:
             - pkg: github.com/agile-crypto/citius-core/policy
               desc: sibling bounded context
